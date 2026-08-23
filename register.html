@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Register — MekyyStudio</title>
+<link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body>
+
+<main class="auth">
+  <div class="auth-box">
+    <a class="brand" href="index.html">
+      <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+      <span class="brand-name">Mekyy<span>.</span>Studio</span>
+    </a>
+    <p class="eyebrow">NEW CUSTOMER</p>
+    <h1>Create account</h1>
+    <p class="muted">Create your account to keep orders, payments and live chat in one place.</p>
+    <form id="register-form">
+      <label>Name<input id="name" required placeholder="Your name"></label>
+      <label>Email<input id="email" type="email" required placeholder="you@example.com"></label>
+      <label>Password<input id="password" type="password" minlength="6" required placeholder="At least 6 characters"></label>
+      <div id="selected" class="selected"></div>
+      <p id="error" class="error"></p>
+      <button class="btn dark" type="submit">Create account</button>
+    </form>
+    <p class="bottom">Already have an account? <a href="login.html">Login</a></p>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="packages.js"></script>
+<script src="pricing.js"></script>
+<script>
+const params=new URLSearchParams(location.search);
+const product=params.get("product"),tier=params.get("package"),price=params.get("price");
+async function renderSelected(){
+  if(product){
+    if(tier && window.MekyyPricing){
+      await window.MekyyPricing.load();
+      const original=Number(window.MekyyPricing.originalForCart({product,package:tier,price}));
+      const final=window.MekyyPricing.discounted(original);
+      document.getElementById("selected").innerHTML=`Selected service: <b>${product}</b> · ${tier} · ${window.MekyyPricing.money(final)}${window.MekyyPricing.getDiscount()?` <small>(${window.MekyyPricing.getDiscount()}% off)</small>`:""}`;
+    }else{
+      document.getElementById("selected").innerHTML=`Selected service: <b>${product}</b>`;
+    }
+  }else{
+    document.getElementById("selected").style.display="none";
+  }
+}
+document.getElementById("register-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const error=document.getElementById("error");error.textContent="";
+  const {data,error:err}=await window.supabaseClient.auth.signUp({
+    email:document.getElementById("email").value.trim(),
+    password:document.getElementById("password").value,
+    options:{data:{name:document.getElementById("name").value.trim(),selected_product:product||""}}
+  });
+  if(err){error.textContent=err.message;return}
+  if(data.session){
+    if(product&&tier){
+      await window.MekyyPricing.load();
+      const originalPrice=Number(window.MekyyPricing.originalForCart({product,package:tier,price}));
+      const finalPrice=window.MekyyPricing.discounted(originalPrice);
+      const cart=JSON.parse(localStorage.getItem("studio-cart")||"[]");
+      cart.push({product,package:tier,originalPrice,price:finalPrice,discount:window.MekyyPricing.getDiscount(),category:"Design Service",addedAt:new Date().toISOString()});
+      localStorage.setItem("studio-cart",JSON.stringify(cart));
+    }
+    location.href="index.html";
+  }else{
+    location.href="login.html"+(product?("?"+params.toString()):"");
+  }
+});
+renderSelected();
+</script>
+</body>
+</html>

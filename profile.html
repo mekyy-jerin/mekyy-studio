@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Profile — MekyyStudio
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+
+
+<body>
+
+
+    <!-- =========================
+         NAVIGATION
+    ========================== -->
+
+    <header class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+    <span class="brand-name">Mekyy<span>.</span>Studio</span>
+  </a>
+  <div class="nav-buttons"><a href="index.html">Home</a><a href="history.html">History</a><button id="logout" class="link-button">Logout</button></div>
+</header>
+
+
+
+    <!-- =========================
+         ACCOUNT PAGE
+    ========================== -->
+
+    <main class="account-page">
+
+
+        <div class="page-heading">
+
+            <p class="eyebrow">
+                ACCOUNT
+            </p>
+
+
+            <h1>
+                Your profile.
+            </h1>
+
+
+            <p class="lead">
+                Manage your personal details,
+                security and appearance.
+            </p>
+
+        </div>
+
+
+
+        <!-- =========================
+             SETTINGS
+        ========================== -->
+
+        <div class="settings-grid">
+
+
+            <!-- =========================
+                 PROFILE
+            ========================== -->
+
+            <section class="settings-card">
+
+                <p class="eyebrow">
+                    PROFILE
+                </p>
+
+
+                <h2>
+                    Personal details
+                </h2>
+
+
+                <form
+                    id="profile-form"
+                >
+
+
+                    <label>
+
+                        Name
+
+                        <input
+                            id="name"
+                            required
+                        >
+
+                    </label>
+
+
+                    <label>
+
+                        Email
+
+                        <input
+                            id="email"
+                            type="email"
+                            disabled
+                        >
+
+                    </label>
+
+
+                    <p
+                        id="profile-msg"
+                        class="form-message"
+                    ></p>
+
+
+                    <button
+                        class="btn dark"
+                        type="submit"
+                    >
+
+                        Save changes
+
+                    </button>
+
+
+                </form>
+
+            </section>
+
+
+
+            <!-- =========================
+                 SECURITY
+            ========================== -->
+
+            <section class="settings-card">
+
+                <p class="eyebrow">
+                    SECURITY
+                </p>
+
+
+                <h2>
+                    Change password
+                </h2>
+
+
+                <p class="muted">
+
+                    For your security,
+                    enter your current password
+                    before setting a new one.
+
+                </p>
+
+
+                <form
+                    id="password-form"
+                >
+
+
+                    <label>
+
+                        Current password
+
+                        <input
+                            id="current-password"
+                            type="password"
+                            required
+                        >
+
+                    </label>
+
+
+                    <label>
+
+                        New password
+
+                        <input
+                            id="new-password"
+                            type="password"
+                            minlength="6"
+                            required
+                        >
+
+                    </label>
+
+
+                    <label>
+
+                        Confirm new password
+
+                        <input
+                            id="confirm-password"
+                            type="password"
+                            minlength="6"
+                            required
+                        >
+
+                    </label>
+
+
+                    <p
+                        id="password-msg"
+                        class="form-message"
+                    ></p>
+
+
+                    <button
+                        class="btn dark"
+                        type="submit"
+                    >
+
+                        Update password
+
+                    </button>
+
+
+                </form>
+
+            </section>
+
+
+
+            <!-- =========================
+                 APPEARANCE
+            ========================== -->
+
+            <section class="settings-card">
+
+                <p class="eyebrow">
+                    APPEARANCE
+                </p>
+
+
+                <h2>
+                    Theme
+                </h2>
+
+
+                <div class="theme-row">
+
+
+                    <div>
+
+                        <b>
+                            Dark mode
+                        </b>
+
+
+                        <span>
+                            Use a darker interface
+                            across the studio.
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        id="theme-toggle"
+                        class="switch"
+                        type="button"
+                        aria-pressed="false"
+                    >
+
+                        <span></span>
+
+                    </button>
+
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =========================
+                 DELETE ACCOUNT
+            ========================== -->
+
+            <section
+                class="settings-card danger-card"
+            >
+
+                <p class="eyebrow">
+                    DANGER ZONE
+                </p>
+
+
+                <h2>
+                    Delete account
+                </h2>
+
+
+                <p class="muted">
+
+                    A reauthentication code
+                    will be sent to your email
+                    before your account can
+                    be deleted.
+
+                </p>
+
+
+                <button
+                    id="reauth"
+                    class="btn"
+                    type="button"
+                >
+
+                    Send verification code
+
+                </button>
+
+
+
+                <!-- DELETE FORM -->
+
+                <form
+                    id="delete-form"
+                    class="delete-form"
+                    style="display:none"
+                >
+
+
+                    <label>
+
+                        Email verification code
+
+                        <input
+                            id="reauth-code"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            placeholder="Enter the code from email"
+                            required
+                        >
+
+                    </label>
+
+
+                    <p
+                        id="delete-msg"
+                        class="form-message"
+                    ></p>
+
+
+                    <button
+                        class="btn danger"
+                        type="submit"
+                    >
+
+                        Delete my account permanently
+
+                    </button>
+
+
+                </form>
+
+            </section>
+
+
+        </div>
+
+    </main>
+
+
+
+    <!-- =========================
+         SUPABASE
+    ========================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="supabase-config.js"></script><script src="cart-widget.js"></script>
+
+
+
+    <!-- =========================
+         PROFILE SCRIPT
+    ========================== -->
+
+    <script>
+
+
+        /* =========================
+           VARIABLES
+        ========================== */
+
+        let currentUser;
+
+
+        const $ =
+            id =>
+                document.getElementById(
+                    id
+                );
+
+
+
+        /* =========================
+           MESSAGE
+        ========================== */
+
+        function setMsg(
+            el,
+            text,
+            ok = false
+        ) {
+
+            el.textContent =
+                text;
+
+
+            el.className =
+                "form-message "
+                +
+                (
+                    ok
+                        ? "success"
+                        : ""
+                );
+
+        }
+
+
+
+        /* =========================
+           THEME
+        ========================== */
+
+        function applyTheme() {
+
+
+            const dark =
+                localStorage.getItem(
+                    "studio-theme"
+                )
+                ===
+                "dark";
+
+
+            document.documentElement.classList.toggle("dark-mode", dark);
+            document.body.classList.toggle("dark-mode", dark);
+
+
+            $("theme-toggle")
+                .setAttribute(
+                    "aria-pressed",
+                    dark
+                );
+
+        }
+
+
+
+        /* =========================
+           INITIALIZE PROFILE
+        ========================== */
+
+        async function init() {
+
+
+            const {
+                data: {
+                    user
+                }
+            } =
+                await window
+                    .supabaseClient
+                    .auth
+                    .getUser();
+
+
+            /* NOT LOGGED IN */
+
+            if (!user) {
+
+                location.href =
+                    "login.html";
+
+                return;
+
+            }
+
+
+            currentUser =
+                user;
+
+
+
+            /* GET PROFILE */
+
+            const {
+                data: p,
+                error
+            } =
+                await window
+                    .supabaseClient
+                    .from("profiles")
+                    .select(
+                        "name,email,role"
+                    )
+                    .eq(
+                        "id",
+                        user.id
+                    )
+                    .single();
+
+
+            if (error) {
+
+                setMsg(
+                    $("profile-msg"),
+                    error.message
+                );
+
+                return;
+
+            }
+
+
+
+            /* ADMIN */
+
+            if (
+                p.role === "admin"
+            ) {
+
+                location.href =
+                    "admin.html";
+
+                return;
+
+            }
+
+
+
+            /* PROFILE DATA */
+
+            $("name").value =
+                p.name
+                ||
+                user.user_metadata?.name
+                ||
+                "";
+
+
+            $("email").value =
+                p.email
+                ||
+                user.email;
+
+
+
+            /* THEME */
+
+            applyTheme();
+
+        }
+
+
+
+        /* =========================
+           SAVE PROFILE
+        ========================== */
+
+        $("profile-form")
+            .addEventListener(
+                "submit",
+                async e => {
+
+
+                    e.preventDefault();
+
+
+                    setMsg(
+                        $("profile-msg"),
+                        ""
+                    );
+
+
+                    const name =
+                        $("name")
+                            .value
+                            .trim();
+
+
+
+                    const {
+                        error
+                    } =
+                        await window
+                            .supabaseClient
+                            .from("profiles")
+                            .update({
+                                name
+                            })
+                            .eq(
+                                "id",
+                                currentUser.id
+                            );
+
+
+                    if (error) {
+
+                        setMsg(
+                            $("profile-msg"),
+                            error.message
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    await window
+                        .supabaseClient
+                        .auth
+                        .updateUser({
+
+                            data: {
+                                name
+                            }
+
+                        });
+
+
+
+                    setMsg(
+                        $("profile-msg"),
+                        "Profile saved.",
+                        true
+                    );
+
+                }
+            );
+
+
+
+        /* =========================
+           CHANGE PASSWORD
+        ========================== */
+
+        $("password-form")
+            .addEventListener(
+                "submit",
+                async e => {
+
+
+                    e.preventDefault();
+
+
+                    setMsg(
+                        $("password-msg"),
+                        ""
+                    );
+
+
+                    const a =
+                        $("current-password")
+                            .value;
+
+
+                    const b =
+                        $("new-password")
+                            .value;
+
+
+                    const c =
+                        $("confirm-password")
+                            .value;
+
+
+
+                    /* CHECK PASSWORD */
+
+                    if (b !== c) {
+
+                        setMsg(
+                            $("password-msg"),
+                            "New passwords do not match."
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    /* VERIFY CURRENT PASSWORD */
+
+                    const {
+                        error: loginErr
+                    } =
+                        await window
+                            .supabaseClient
+                            .auth
+                            .signInWithPassword({
+
+                                email:
+                                    currentUser.email,
+
+                                password:
+                                    a
+
+                            });
+
+
+
+                    if (loginErr) {
+
+                        setMsg(
+                            $("password-msg"),
+                            "Current password is incorrect."
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    /* UPDATE PASSWORD */
+
+                    const {
+                        error
+                    } =
+                        await window
+                            .supabaseClient
+                            .auth
+                            .updateUser({
+
+                                password: b
+
+                            });
+
+
+
+                    if (error) {
+
+                        setMsg(
+                            $("password-msg"),
+                            error.message
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    $("password-form")
+                        .reset();
+
+
+                    setMsg(
+                        $("password-msg"),
+                        "Password updated.",
+                        true
+                    );
+
+                }
+            );
+
+
+
+        /* =========================
+           DARK MODE TOGGLE
+        ========================== */
+
+        $("theme-toggle")
+            .addEventListener(
+                "click",
+                () => {
+
+
+                    const dark = !document.documentElement.classList.contains("dark-mode");
+                    document.documentElement.classList.toggle("dark-mode", dark);
+                    document.body.classList.toggle("dark-mode", dark);
+
+
+                    localStorage.setItem(
+                        "studio-theme",
+                        dark
+                            ? "dark"
+                            : "light"
+                    );
+
+
+                    $("theme-toggle")
+                        .setAttribute(
+                            "aria-pressed",
+                            dark
+                        );
+
+                }
+            );
+
+
+
+        /* =========================
+           REAUTHENTICATION
+        ========================== */
+
+        $("reauth")
+            .addEventListener(
+                "click",
+                async () => {
+
+
+                    setMsg(
+                        $("delete-msg"),
+                        ""
+                    );
+
+
+                    const {
+                        error
+                    } =
+                        await window
+                            .supabaseClient
+                            .auth
+                            .reauthenticate();
+
+
+                    if (error) {
+
+                        setMsg(
+                            $("delete-msg"),
+                            error.message
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    $("delete-form")
+                        .style
+                        .display =
+                        "grid";
+
+
+                    $("reauth")
+                        .textContent =
+                        "Verification code sent";
+
+
+                    $("reauth")
+                        .disabled =
+                        true;
+
+
+                    setMsg(
+                        $("delete-msg"),
+                        "Check your email for the verification code.",
+                        true
+                    );
+
+                }
+            );
+
+
+
+        /* =========================
+           DELETE ACCOUNT
+        ========================== */
+
+        $("delete-form")
+            .addEventListener(
+                "submit",
+                async e => {
+
+
+                    e.preventDefault();
+
+
+                    setMsg(
+                        $("delete-msg"),
+                        ""
+                    );
+
+
+                    const code =
+                        $("reauth-code")
+                            .value
+                            .trim();
+
+
+
+                    /* VERIFY OTP */
+
+                    const {
+                        error: verifyErr
+                    } =
+                        await window
+                            .supabaseClient
+                            .auth
+                            .verifyOtp({
+
+                                email:
+                                    currentUser.email,
+
+                                token:
+                                    code,
+
+                                type:
+                                    "reauthentication"
+
+                            });
+
+
+
+                    if (verifyErr) {
+
+                        setMsg(
+                            $("delete-msg"),
+                            verifyErr.message
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    /* DELETE ACCOUNT */
+
+                    const {
+                        error
+                    } =
+                        await window
+                            .supabaseClient
+                            .rpc(
+                                "delete_my_account"
+                            );
+
+
+
+                    if (error) {
+
+                        setMsg(
+                            $("delete-msg"),
+                            "Verification succeeded, but account deletion is not configured. Run schema-v3.sql in Supabase SQL Editor."
+                        );
+
+                        return;
+
+                    }
+
+
+
+                    await window
+                        .supabaseClient
+                        .auth
+                        .signOut();
+
+
+                    location.href =
+                        "login.html";
+
+                }
+            );
+
+
+
+        /* =========================
+           LOGOUT
+        ========================== */
+
+        $("logout")
+            .onclick =
+            async () => {
+
+
+                await window
+                    .supabaseClient
+                    .auth
+                    .signOut();
+
+
+                location.href =
+                    "login.html";
+
+            };
+
+
+
+        /* =========================
+           START
+        ========================== */
+
+        init();
+
+
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Products — MekyyStudio</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script>
+(function () {
+  try {
+    const theme = localStorage.getItem("studio-theme");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark-mode");
+    }
+  } catch (e) {}
+})();
+</script>
+
+<style>
+/* ================================
+   PRICING / DISCOUNT
+================================ */
+
+.price-box {
+  margin: 18px 0;
+}
+
+.price-old {
+  color: #999;
+  text-decoration: line-through;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.price-new {
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.discount-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.discount-info {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #777;
+}
+
+.package-card.featured .discount-badge {
+  background: #e84b32;
+}
+
+/* Dark mode */
+.dark-mode .price-old,
+html.dark-mode .price-old {
+  color: #888;
+}
+
+.dark-mode .discount-badge,
+html.dark-mode .discount-badge {
+  background: #fff;
+  color: #111;
+}
+
+.dark-mode .discount-info,
+html.dark-mode .discount-info {
+  color: #aaa;
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="nav">
+
+  <a class="brand" href="index.html">
+
+    <span class="brand-logo">
+      <img
+        src="assets/mekyy-studio-logo.png"
+        alt="MekyyStudio"
+        onerror="
+          this.style.display='none';
+          this.nextElementSibling.style.display='block'
+        "
+      >
+
+      <span class="brand-fallback">M</span>
+    </span>
+
+    <span class="brand-name">
+      Mekyy<span>.</span>Studio
+    </span>
+
+  </a>
+
+  <div class="nav-buttons">
+
+    <a href="history.html">
+      History
+    </a>
+
+    <a href="profile.html">
+      Profile
+    </a>
+
+  </div>
+
+</header>
+
+
+<main class="products-page">
+
+  <a
+    class="page-back"
+    href="index.html#services"
+  >
+    ← Back to services
+  </a>
+
+  <p class="eyebrow">
+    SELECT A PRODUCT
+  </p>
+
+  <h1 id="category">
+    Services
+  </h1>
+
+  <p class="lead">
+    Choose a service, pick a package, then save it to your cart.
+  </p>
+
+  <!-- Discount banner -->
+  <div
+    id="discount-banner"
+    style="display:none"
+  ></div>
+
+  <div
+    id="product-list"
+    class="product-grid"
+  ></div>
+
+  <p
+    id="error"
+    class="error"
+  ></p>
+
+</main>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="packages.js"></script>
+<script src="pricing.js"></script>
+<script src="cart-widget.js"></script>
+<script src="notifications.js"></script>
+<script>
+const products={"Branding & Print":["Logo & Brand Identity","Business Card & Letterhead","Certificate & Invitation","Flyer","Brochure","Poster","Banner","Menu","Packaging"],"Digital & Social":["Social Media Post","Social Media Banner","Social Media Story","YouTube Thumbnail","YouTube Banner","Web Banner","Advertisement Design","Infographic"],"Vector & Illustration":["Vector Illustration","Icon Pack","Character","Mascot","Sticker","Badge","Pattern","SVG Asset"],"Typography":["Custom Lettering","Wordmark","Typography Poster","Text Effect","Font Customization"],"UI / Web":["Website UI","Landing Page","Mobile App UI","Dashboard UI","UI Components","Wireframe & Prototype"],"Photo & Image":["Background Removal","Background Replacement","Image Enhancement","Object Removal","Photo Manipulation","Product Image Editing"]};
+const PREMIUM_ENABLED = false; // V20: Premium package temporarily locked.
+const params=new URLSearchParams(location.search),category=params.get("category")||"Branding & Print";
+const list=document.getElementById("product-list"),error=document.getElementById("error"),banner=document.getElementById("discount-banner");
+document.getElementById("category").textContent=category;
+const esc=v=>String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const getCart=()=>{try{return JSON.parse(localStorage.getItem("studio-cart")||"[]")}catch{return[]}};
+const saveCart=v=>{localStorage.setItem("studio-cart",JSON.stringify(v));window.mekyyCartRefresh?.()};
+function pricingApi(){
+  if(window.MekyyPricing) return window.MekyyPricing;
+  return {
+    getDiscount:()=>0,
+    discounted:v=>Number(v)||0,
+    money:v=>`RM ${Number(v||0).toFixed(2)}`,
+    priceHTML:v=>`<div class="price-box"><div class="price-new">RM ${Number(v||0).toFixed(2)}</div></div>`,
+    normalizeItem:item=>item,
+    load:async()=>0
+  };
+}
+function renderBanner(){const api=pricingApi();const d=api.getDiscount();banner.style.display=d?"block":"none";banner.innerHTML=d?`<div class="discount-banner-inner"><strong>${d}% OFF</strong><span>Limited-time offer on MekyyStudio services.</span></div>`:"";}
+function showPackages(product){
+ const packs=window.MEKYY_PACKAGES?.[product];
+ if(!packs){error.textContent="Pricing is not configured for this product.";error.className="form-message";return;}
+ const api=pricingApi();
+ list.innerHTML=`<div class="product-package-wrap"><button class="package-back" id="back-products" type="button">← Back to products</button><div class="package-heading"><p class="eyebrow">${esc(category)}</p><h2>${esc(product)}</h2><p class="lead">Choose the service level that fits your project.</p></div><div class="package-grid">${Object.entries(packs).map(([tier,p])=>{const locked=tier==="Premium"&&!PREMIUM_ENABLED;return `<article class="package-card ${tier==="Professional"?"featured":""} ${locked?"package-locked":""}"><span class="tag">${locked?"Locked":tier==="Professional"?"Recommended":esc(tier)}</span><h3>${esc(tier)}</h3><p>${esc(p.description||"")}</p>${api.priceHTML(p.price)}<ul>${(p.features||[]).map(f=>`<li>${esc(f)}</li>`).join("")}</ul><button class="btn ${locked?"":"dark"} choose-package" data-tier="${esc(tier)}" ${locked?"disabled":""}>${locked?"Premium — Coming Soon":"Add "+esc(tier)+" →"}</button></article>`}).join("")}</div></div>`;
+ document.getElementById("back-products").onclick=renderProducts;
+ list.querySelectorAll(".choose-package").forEach(b=>b.onclick=()=>choosePackage(product,b.dataset.tier));
+}
+async function choosePackage(product,tier){
+ if(tier==="Premium"&&!PREMIUM_ENABLED){error.textContent="Premium is temporarily locked. Please choose Simple or Professional.";error.className="form-message";return;}
+ const p=window.MEKYY_PACKAGES?.[product]?.[tier]; if(!p){error.textContent="This package is not configured.";return;}
+ const api=pricingApi(); const original=Number(p.price)||0,final=api.discounted(original);
+ const {data:{user}}=await window.supabaseClient.auth.getUser();
+ if(!user){location.href="login.html?"+new URLSearchParams({product,package:tier,price:final,originalPrice:original}).toString();return;}
+ const cart=getCart();cart.push({product,category,package:tier,originalPrice:original,price:final,discount:MekyyPricing.getDiscount(),addedAt:new Date().toISOString()});saveCart(cart);
+ error.textContent=`${product} — ${tier} added to cart.`;error.className="form-message success";renderProducts();
+}
+function renderProducts(){
+ list.innerHTML=(products[category]||[]).map((product,i)=>{const api=pricingApi();const p=window.MEKYY_PACKAGES?.[product]?.Simple;const original=p?Number(p.price):null;const final=p?api.discounted(original):null;const discount=api.getDiscount();const start=final==null?"custom quote":discount?`from <span class="price-old">RM ${original.toFixed(2)}</span> <strong>RM ${final.toFixed(2)}</strong>`:`from RM ${final.toFixed(2)}`;return `<article class="product-card"><small>${String(i+1).padStart(2,"0")}</small><h3>${esc(product)}</h3><p>Three service levels · ${start}</p><button class="btn dark view-packages" data-product="${esc(product)}">View packages →</button></article>`}).join("");
+ list.querySelectorAll(".view-packages").forEach(b=>b.onclick=()=>showPackages(b.dataset.product));
+}
+(async()=>{
+  // Pricing is optional: if Supabase/site_settings has no discount,
+  // the catalog must still display its normal package prices.
+  try { if(window.MekyyPricing?.load) await window.MekyyPricing.load(); } catch(e) {}
+  renderBanner();
+  renderProducts();
+})();
+</script>
+</body>
+</html>

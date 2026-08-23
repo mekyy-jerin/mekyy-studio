@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Thank you — MekyyStudio</title><link rel="stylesheet" href="style.css">
+<script>(function(){try{if(localStorage.getItem('studio-theme')==='dark')document.documentElement.classList.add('dark-mode')}catch(e){}})();</script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
+  <div class="nav-buttons"><a href="history.html">History</a><a href="profile.html">Profile</a><button id="logout" class="link-button">Logout</button></div>
+</header>
+<main class="account-page thankyou-page">
+  <section class="thankyou-card">
+    <p class="eyebrow" id="eyebrow">ORDER RECEIVED</p>
+    <h1 id="title">Thank you for choosing MekyyStudio.</h1>
+    <p id="message" class="lead">Your payment notice has been received. The studio will verify the payment and unlock your final delivery once it is confirmed.</p>
+    <div id="order-ref" class="thankyou-ref"></div>
+    <div class="thankyou-actions"><a class="btn dark" id="view-order" href="history.html">View my orders ↗</a><a class="btn" href="index.html#services">Order another service +</a></div>
+  </section>
+  <section class="thankyou-suggestions">
+    <p class="eyebrow">YOU MAY ALSO LIKE</p><h2>Continue with another project.</h2>
+    <div class="suggestion-grid">
+      <a class="suggestion-card" href="products.html?category=Branding%20%26%20Print"><strong>Branding & Print</strong><span>Logos, posters, cards and more →</span></a>
+      <a class="suggestion-card" href="products.html?category=Digital%20%26%20Social"><strong>Digital & Social</strong><span>Social posts, banners and thumbnails →</span></a>
+      <a class="suggestion-card" href="products.html?category=UI%20%2F%20Web"><strong>UI / Web</strong><span>Landing pages, dashboards and app UI →</span></a>
+    </div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="receipt.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script><script>
+const $=id=>document.getElementById(id);const q=new URLSearchParams(location.search);const project=q.get('project');
+if(q.get('cancelled')==='1'){ $('eyebrow').textContent='ORDER CANCELLED'; $('title').textContent='Your order has been cancelled.'; $('message').textContent='The order and its live chat have been removed. You can start a new project whenever you are ready.'; }
+if(project)$('order-ref').textContent='Order #'+project;
+$('view-order').href=project?'chat.html?project='+encodeURIComponent(project):'history.html';
+$('logout').onclick=async()=>{await window.supabaseClient.auth.signOut();location.href='login.html'};
+if(project){
+  let receiptDone=false;
+  const check=async()=>{
+    const {data}=await window.supabaseClient.from('projects').select('id,product,package_name,price,payment_method,payment_status,payment_confirmed_at').eq('id',project).maybeSingle();
+    if(!data)return;
+    if(data.payment_status==='confirmed'&&!receiptDone){
+      receiptDone=true;
+      $('eyebrow').textContent='PAYMENT CONFIRMED';
+      $('title').textContent='Thank you — your payment is confirmed.';
+      $('message').textContent='Your receipt is ready and your final delivery has been unlocked. A payment confirmation email has also been sent.';
+      try{await window.MekyyReceipt?.download(data,false)}catch(e){}
+    }
+  };
+  check();
+  const timer=setInterval(check,5000);
+  window.addEventListener('beforeunload',()=>clearInterval(timer));
+}
+</script>
+</body></html>

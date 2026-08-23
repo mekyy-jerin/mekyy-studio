@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Project — MekyyStudio</title>
+<link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+    <span class="brand-name">Mekyy<span>.</span>Studio</span>
+  </a>
+  <div class="nav-buttons">
+    <a href="history.html">History</a>
+    <a href="profile.html">Profile</a>
+    <button id="logout" class="link-button">Logout</button>
+  </div>
+</header>
+
+<main class="chat-page">
+  <div class="chat-header">
+    <div>
+      <p class="eyebrow">PROJECT SPACE</p>
+      <h1 id="product">Loading…</h1>
+      <p id="status" class="muted">Loading your order.</p>
+    </div>
+    <a class="btn" href="index.html#services">Choose another service</a>
+  </div>
+
+  <section id="order-box" class="customer-order-box" style="display:none">
+    <div>
+      <span id="order-pill" class="status-pill"></span>
+      <h2 id="order-title"></h2>
+      <p id="order-info" class="muted"></p>
+    </div>
+    <div id="order-actions" class="order-actions"></div>
+  </section>
+
+  <section id="payment-box" class="customer-payment" style="display:none">
+    <div class="payment-head">
+      <div>
+        <p class="eyebrow">PAYMENT</p>
+        <h2>Complete your order.</h2>
+        <p id="payment-subtitle" class="muted">The studio has marked your product ready.</p>
+      </div>
+      <div id="payment-total" class="payment-total">RM 0.00</div>
+    </div>
+
+    <div id="payment-methods" class="payment-methods">
+      <button type="button" class="payment-method active" data-method="TNG">
+        <strong>Touch 'n Go</strong><span>TNG eWallet / QR</span>
+      </button>
+      <button type="button" class="payment-method" data-method="BANK">
+        <strong>Bank Transfer</strong><span>Personal bank account</span>
+      </button>
+    </div>
+
+    <div id="payment-details" class="payment-details"></div>
+    <p class="payment-note">This page records your selected payment method and payment notice. It does not process money directly; the studio confirms payment after receiving it.</p>
+    <div class="payment-actions">
+      <button id="payment-submit" class="btn dark">I've Paid ↗</button>
+    </div>
+  </section>
+
+  <section class="chat-shell">
+    <div class="chat-topline">
+      <strong>Conversation with MekyyStudio</strong>
+      <span class="chat-live">LIVE CHAT</span>
+    </div>
+
+    <div id="messages" class="messages"></div>
+
+    <form id="message-form" class="message-form">
+      <textarea id="message" rows="3" placeholder="Write a message to the studio…"></textarea>
+      <div class="message-tools">
+        <div class="chat-attachment">
+          <label class="file-btn" for="attachment">
+            <span class="attach-icon">📎</span>
+            <span>Attach file</span>
+            <input id="attachment" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" hidden>
+          </label>
+          <span id="attachment-name" class="attachment-name">No file selected</span>
+          <button id="clear-attachment" class="clear-attachment" type="button" hidden aria-label="Remove selected file">×</button>
+        </div>
+        <div id="attachment-preview" class="attachment-preview" hidden></div>
+      </div>
+      <button class="btn dark send-button" type="submit">Send ↗</button>
+    </form>
+    <p id="error" class="error" style="padding:0 18px 14px"></p>
+  </section>
+</main>
+
+<div id="chat-confirm" class="admin-modal" hidden><div class="admin-modal-card" role="dialog" aria-modal="true"><p class="eyebrow">CONFIRM ACTION</p><h2 id="chat-confirm-title">Are you sure?</h2><p id="chat-confirm-text" class="muted"></p><div class="modal-actions"><button id="chat-confirm-cancel" class="btn">Keep order</button><button id="chat-confirm-ok" class="btn danger">Confirm</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="cart-widget.js"></script>
+<script src="notifications.js"></script>
+<script src="receipt.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+window.MekyyConfirm={show(title,text,okText="Confirm"){return new Promise(resolve=>{const m=$("chat-confirm");$("chat-confirm-title").textContent=title;$("chat-confirm-text").textContent=text;$("chat-confirm-ok").textContent=okText;const done=v=>{m.hidden=true;resolve(v)};$("chat-confirm-cancel").onclick=()=>done(false);$("chat-confirm-ok").onclick=()=>done(true);m.hidden=false;})}};
+const projectId = new URLSearchParams(location.search).get("project");
+let currentUser = null, project = null, realtimeChannel = null, deliverySignedUrl = null;
+let paymentMethod = "TNG";
+const BANK_PAYMENT = {
+  bank: "Maybank",
+  accountName: "YOUR ACCOUNT NAME",
+  accountNumber: "YOUR ACCOUNT NUMBER",
+  note: "Use your order number as the payment reference."
+};
+
+function esc(v) {
+  return String(v ?? "").replace(/[&<>'"]/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[c]));
+}
+function label(p) {
+  if (p.refund_status === "refunded") return "REFUNDED";
+  if (p.refund_status === "requested") return "REFUND REQUESTED";
+  if (p.payment_status === "confirmed") return "COMPLETED / PAID";
+  if (p.payment_status === "submitted") return "PAYMENT SUBMITTED";
+  return ({new:"NEW",in_progress:"IN PROGRESS",delayed:"DELAYED",awaiting_payment:"PAYMENT READY"}[p.status] || String(p.status || "").toUpperCase());
+}
+function setError(text="") { $("error").textContent = text; }
+
+function renderPayment() {
+  const show = project && (project.status === "awaiting_payment" || project.status === "payment_submitted");
+  $("payment-box").style.display = show ? "block" : "none";
+  if (!show) return;
+
+  $("payment-total").textContent = `RM ${Number(project.price || 0).toFixed(2)}`;
+  const submitted = project.payment_status === "submitted";
+  $("payment-submit").disabled = submitted;
+  $("payment-submit").textContent = submitted ? "Payment Submitted ✓" : "I've Paid ↗";
+  $("payment-subtitle").textContent = submitted
+    ? "Your payment notice has been sent. Please wait for admin confirmation."
+    : "Choose TNG QR or direct bank transfer. FPX is currently unavailable.";
+
+  document.querySelectorAll(".payment-method").forEach(b => b.classList.toggle("active", b.dataset.method === paymentMethod));
+
+  if (paymentMethod === "TNG") {
+    $("payment-details").innerHTML = `
+      <div class="qr-placeholder">
+        <div class="qr-box">
+          <img src="assets/mekyy-studio-qr.png" alt="MekyyStudio TNG QR"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <span>YOUR TNG<br>QR HERE</span>
+        </div>
+        <p>Scan the MekyyStudio TNG QR to pay.<br>Scan this QR code to pay via Touch 'n Go.</p>
+      </div>`;
+  } else {
+    $("payment-details").innerHTML = `
+      <div class="bank-transfer-card">
+        <p class="eyebrow">DIRECT BANK TRANSFER</p>
+        <h3>${esc(BANK_PAYMENT.bank)}</h3>
+        <dl>
+          <div><dt>Account name</dt><dd>${esc(BANK_PAYMENT.accountName)}</dd></div>
+          <div><dt>Account number</dt><dd>${esc(BANK_PAYMENT.accountNumber)}</dd></div>
+          <div><dt>Amount</dt><dd>RM ${Number(project.price || 0).toFixed(2)}</dd></div>
+        </dl>
+        <p class="muted">${esc(BANK_PAYMENT.note)}</p>
+      </div>`;
+  }
+}
+
+document.querySelectorAll(".payment-method").forEach(btn => {
+  btn.onclick = () => { paymentMethod = btn.dataset.method; renderPayment(); };
+});
+
+async function updateProject(patch) {
+  const { data, error } = await window.supabaseClient.from("projects")
+    .update(patch)
+    .eq("id", project.id)
+    .select("id,product,package_name,status,title,price,original_price,discount_percent,refund_status,payment_status,payment_method,delivery_url,delivery_path,delivery_name,delivery_type,payment_confirmed_at,created_at")
+    .single();
+  if (error) { setError(error.message); return false; }
+  project = data; await loadDeliveryUrl(); renderOrder(); renderPayment(); if (window.mekyyCartRefresh) window.mekyyCartRefresh(); return true;
+}
+
+async function loadDeliveryUrl(){
+  deliverySignedUrl=null;
+  if(project?.delivery_path){
+    const {data,error}=await window.supabaseClient.storage.from("deliveries").createSignedUrl(project.delivery_path,3600);
+    if(!error) deliverySignedUrl=data?.signedUrl||null;
+  }
+}
+function renderOrder() {
+  $("order-box").style.display = "flex";
+  $("order-pill").textContent = label(project);
+  $("order-pill").className = "status-pill " + (project.payment_status === "confirmed" ? "done" : "");
+  $("order-title").textContent = project.product;
+  $("order-info").textContent = project.price > 0
+    ? `Package total: RM ${Number(project.price).toFixed(2)}`
+    : "Price will be confirmed by the studio.";
+
+  const actions = [];
+  if (project.status === "delayed" && project.refund_status === "none")
+    actions.push(`<button id="refund-request" class="btn danger">Request Refund</button>`);
+  if (!['completed'].includes(project.status) && project.payment_status !== 'confirmed' && project.refund_status === 'none')
+    actions.push(`<button id="cancel-order" class="btn danger">Cancel order</button>`);
+  if (project.payment_status === "confirmed") {
+    if (project.delivery_url) actions.push(`<a class="btn" target="_blank" rel="noopener" href="${esc(project.delivery_url)}">Open Product ↗</a>`);
+    if (deliverySignedUrl) actions.push(`<a class="btn dark" target="_blank" rel="noopener" href="${esc(deliverySignedUrl)}" download>Download ${esc(project.delivery_name||"Product")} ↓</a>`);
+    actions.push(`<button id="receipt-download" class="btn" type="button">Download receipt ↓</button>`);
+  }
+  if (project.refund_status === "refunded")
+    actions.push(`<span class="form-message success">Refund approved.</span>`);
+  if (project.refund_status === "rejected")
+    actions.push(`<span class="form-message">Refund request rejected. Contact the studio in chat.</span>`);
+  $("order-actions").innerHTML = actions.join("");
+
+  const receiptBtn=$("receipt-download");
+  if(receiptBtn)receiptBtn.onclick=()=>window.MekyyReceipt?.download(project,true);
+
+  const rb = $("refund-request");
+  if (rb) rb.onclick = async () => {
+    rb.disabled=true;
+    const {error}=await window.supabaseClient.rpc("request_project_refund",{p_project_id:project.id});
+    if(error){setError(error.message);rb.disabled=false;return;}
+    MekyyNotify?.show("Refund request sent to the studio.","success",5000);
+    await reloadProject();
+  };
+
+  const cb = $("cancel-order");
+  if (cb) cb.onclick = async () => {
+    cb.disabled = true;
+    const ok = await window.MekyyConfirm?.show?.("Cancel this order?", "This order and its chat will be permanently removed.", "Cancel order");
+    if (ok === false) { cb.disabled = false; return; }
+    try {
+      // Remove the customer's chat attachments through Storage API before deleting the DB row.
+      const {data:msgs} = await window.supabaseClient.from("messages").select("attachment_path").eq("project_id", project.id);
+      const paths = (msgs || []).map(x => x.attachment_path).filter(Boolean);
+      if (paths.length) await window.supabaseClient.storage.from("chat-files").remove(paths);
+      if (project.delivery_path) await window.supabaseClient.storage.from("deliveries").remove([project.delivery_path]);
+      const {error} = await window.supabaseClient.rpc("cancel_my_project", {p_project_id: project.id});
+      if (error) throw error;
+      MekyyNotify?.show("Order cancelled.", "success", 3500);
+      setTimeout(() => location.href = "thankyou.html?cancelled=1", 450);
+    } catch (e) {
+      setError(e.message || "Unable to cancel this order.");
+      cb.disabled = false;
+    }
+  };
+
+  $("status").textContent =
+    project.status === "completed" ? "Completed — payment confirmed."
+    : project.status === "awaiting_payment" ? "Product ready — payment is waiting for confirmation."
+    : project.status === "payment_submitted" ? "Payment submitted — waiting for the studio."
+    : project.status === "delayed" ? "The studio marked this project as delayed."
+    : "Talk to the studio here about your project.";
+}
+
+async function signedUrl(path) {
+  if (!path) return null;
+  const { data, error } = await window.supabaseClient.storage.from("chat-files").createSignedUrl(path, 3600);
+  return error ? null : data?.signedUrl;
+}
+
+async function loadMessages() {
+  if (!project) return;
+  const { data, error } = await window.supabaseClient.from("messages")
+    .select("id,sender_id,message,created_at,attachment_path,attachment_name,attachment_type,attachment_size")
+    .eq("project_id", project.id).order("created_at", {ascending:true});
+  if (error) { setError(error.message); return; }
+
+  const html = [];
+  for (const m of (data || [])) {
+    let attachment = "";
+    if (m.attachment_path) {
+      const url = await signedUrl(m.attachment_path);
+      if (url && (m.attachment_type || "").startsWith("image/")) {
+        attachment = `<div class="attachment-card"><a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(m.attachment_name || "Attached image")}"></a><a class="download-file" href="${esc(url)}" download>Download</a></div>`;
+      } else if (url) {
+        attachment = `<div class="attachment-card"><a href="${esc(url)}" target="_blank" rel="noopener">📎 ${esc(m.attachment_name || "Attached file")} ↗</a><a class="download-file" href="${esc(url)}" download>Download</a></div>`;
+      }
+    }
+    html.push(`<div class="chat-message ${m.sender_id===currentUser.id?"mine":"theirs"}">
+      <small>${m.sender_id===currentUser.id?"You":"MekyyStudio"}</small>
+      ${m.message && m.message !== "[Attachment]" ? `<p>${esc(m.message)}</p>` : ""}
+      ${attachment}
+      <time>${new Date(m.created_at).toLocaleString()}</time>
+    </div>`);
+  }
+  $("messages").innerHTML = html.length ? html.join("") : '<p class="muted">No messages yet. Send the first message.</p>';
+  $("messages").scrollTop = $("messages").scrollHeight;
+}
+
+async function uploadAttachment(file) {
+  if (!file) return null;
+  if (file.size > 10 * 1024 * 1024) throw new Error("Please keep files under 10 MB.");
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${currentUser.id}/${project.id}/${Date.now()}-${safe}`;
+  const { error } = await window.supabaseClient.storage.from("chat-files").upload(path, file, {
+    cacheControl:"3600", upsert:false, contentType:file.type || "application/octet-stream"
+  });
+  if (error) throw error;
+  return {path, name:file.name, type:file.type || "application/octet-stream", size:file.size};
+}
+
+const attachmentInput = $("attachment");
+const attachmentName = $("attachment-name");
+const attachmentPreview = $("attachment-preview");
+const clearAttachment = $("clear-attachment");
+
+attachmentInput.onchange = () => {
+  const file = attachmentInput.files[0];
+  attachmentName.textContent = file ? file.name : "No file selected";
+  clearAttachment.hidden = !file;
+  attachmentPreview.hidden = true;
+  attachmentPreview.innerHTML = "";
+  if (file && file.type.startsWith("image/")) {
+    const url = URL.createObjectURL(file);
+    attachmentPreview.innerHTML = `<img src="${url}" alt="Selected image preview">`;
+    attachmentPreview.hidden = false;
+  }
+};
+
+clearAttachment.onclick = () => {
+  attachmentInput.value = "";
+  attachmentName.textContent = "No file selected";
+  clearAttachment.hidden = true;
+  attachmentPreview.hidden = true;
+  attachmentPreview.innerHTML = "";
+};
+
+$("message-form").onsubmit = async e => {
+  e.preventDefault(); setError("");
+  const text = $("message").value.trim();
+  const file = $("attachment").files[0];
+  if (!text && !file) return;
+  const btn = e.submitter;
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const att = await uploadAttachment(file);
+    const { error } = await window.supabaseClient.from("messages").insert({
+      project_id:project.id, sender_id:currentUser.id,
+      message:text || "[Attachment]",
+      attachment_path:att?.path || null,
+      attachment_name:att?.name || null,
+      attachment_type:att?.type || null,
+      attachment_size:att?.size || null
+    });
+    if (error) throw error;
+    $("message").value = "";
+    $("attachment").value = "";
+    $("attachment-name").textContent = "No file selected";
+    $("clear-attachment").hidden = true;
+    $("attachment-preview").hidden = true;
+    $("attachment-preview").innerHTML = "";
+    await loadMessages();
+  } catch (err) { setError(err.message || "Unable to send message."); }
+  finally { btn.disabled = false; btn.textContent = "Send ↗"; }
+};
+
+$("payment-submit").onclick = async () => {
+  if (project.payment_status === "submitted") return;
+  let method = paymentMethod === "BANK" ? "BANK TRANSFER" : "TNG";
+  const {error}=await window.supabaseClient.rpc("submit_project_payment",{p_project_id:project.id,p_payment_method:method});
+  if(error){setError(error.message);return;}
+  location.href = "thankyou.html?paid=1&project=" + encodeURIComponent(project.id);
+};
+
+async function reloadProject(){
+  const previous=project?.payment_status;
+  const {data,error}=await window.supabaseClient.from("projects")
+    .select("id,product,package_name,status,title,price,original_price,discount_percent,refund_status,payment_status,payment_method,delivery_url,delivery_path,delivery_name,delivery_type,payment_confirmed_at,created_at")
+    .eq("id",project.id).eq("user_id",currentUser.id).single();
+  if(error){
+    if(error.code==="PGRST116"){MekyyNotify?.show("This order was deleted by the studio.","info",5000);setTimeout(()=>location.href="history.html",900);return false;}
+    setError(error.message);return false;
+  }
+  project=data;await loadDeliveryUrl();renderOrder();renderPayment();if(window.mekyyCartRefresh)window.mekyyCartRefresh();
+  if(previous!=="confirmed"&&project.payment_status==="confirmed"){MekyyNotify?.show("Payment confirmed. Your final delivery is unlocked.","success",6500);setTimeout(()=>window.MekyyReceipt?.download(project,false),300);}
+  return true;
+}
+
+async function init() {
+  const { data:{user} } = await window.supabaseClient.auth.getUser();
+  if (!user) { location.href="login.html"; return; }
+  currentUser = user;
+  if (!projectId) { location.href="history.html"; return; }
+
+  const { data, error } = await window.supabaseClient.from("projects")
+    .select("id,product,package_name,status,title,price,original_price,discount_percent,refund_status,payment_status,payment_method,delivery_url,delivery_path,delivery_name,delivery_type,payment_confirmed_at,created_at")
+    .eq("id",projectId).eq("user_id",user.id).single();
+  if (error) { setError("Unable to load this order: " + error.message); console.error("Project load failed", error); return; }
+  project = data;
+  paymentMethod = project.payment_method === "BANK TRANSFER" ? "BANK" : "TNG";
+  $("product").textContent = data.product;
+  await loadDeliveryUrl(); renderOrder(); renderPayment(); await loadMessages();
+  if(location.hash==="#payment") setTimeout(()=>document.getElementById("payment-box")?.scrollIntoView({behavior:"smooth",block:"center"}),120);
+
+  realtimeChannel = window.supabaseClient.channel("customer-project-" + project.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:"messages",filter:"project_id=eq."+project.id},loadMessages)
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"projects",filter:"id=eq."+project.id},()=>reloadProject())
+    .on("postgres_changes",{event:"DELETE",schema:"public",table:"projects",filter:"id=eq."+project.id},()=>{MekyyNotify?.show("This order was deleted by the studio.","info",5000);setTimeout(()=>location.href="history.html",900);})
+    .subscribe();
+  const notificationChannel=window.supabaseClient.channel("customer-notifications-"+project.id)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+currentUser.id},payload=>{const n=payload.new;MekyyNotify?.show(n.title+(n.body?" — "+n.body:""),n.type==="success"?"success":"info",7000);})
+    .subscribe();
+  window._customerNotificationChannel=notificationChannel;
+  window._customerPoll=setInterval(()=>{if(project)reloadProject()},6000);
+}
+$("logout").onclick = async () => { await window.supabaseClient.auth.signOut(); location.href="login.html"; };
+window.addEventListener("beforeunload",()=>{if(realtimeChannel) window.supabaseClient.removeChannel(realtimeChannel);if(window._customerNotificationChannel)window.supabaseClient.removeChannel(window._customerNotificationChannel);if(window._customerPoll)clearInterval(window._customerPoll);});
+init();
+</script>
+</body>
+</html>

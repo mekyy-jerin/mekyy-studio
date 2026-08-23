@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>History — MekyyStudio</title>
+<link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+    <span class="brand-name">Mekyy<span>.</span>Studio</span>
+  </a>
+  <div class="nav-buttons"><a href="index.html">Home</a><a href="profile.html">Profile</a><button id="logout" class="link-button">Logout</button></div>
+</header>
+
+<main class="account-page">
+  <div class="page-heading">
+    <p class="eyebrow">PROJECT HISTORY</p>
+    <h1>Your <em>projects.</em></h1>
+    <p class="lead">A clean timeline of every order, payment, delivery and refund.</p>
+  </div>
+  <div id="history" class="history-list"></div>
+  <p id="error" class="error"></p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="cart-widget.js"></script>
+<script src="notifications.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function label(p){
+  if(p.refund_status==="refunded")return"REFUNDED";
+  if(p.refund_status==="requested")return"REFUND REQUESTED";
+  if(p.payment_status==="confirmed")return"COMPLETED / PAID";
+  if(p.payment_status==="submitted")return"PAYMENT SUBMITTED";
+  return({new:"NEW",in_progress:"IN PROGRESS",delayed:"DELAYED",awaiting_payment:"PAYMENT READY"}[p.status]||String(p.status||"").toUpperCase());
+}
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+async function init(){
+  const {data:{user}}=await window.supabaseClient.auth.getUser();
+  if(!user){location.href="login.html";return}
+  const {data,error}=await window.supabaseClient.from("projects").select("id,product,title,status,price,refund_status,payment_status,payment_method,created_at,delivery_url").eq("user_id",user.id).order("created_at",{ascending:false});
+  if(error){$("error").textContent=error.message;return}
+  if(!data?.length){
+    $("history").innerHTML=`<div class="empty-state"><h2>No projects yet.</h2><p>Your orders will appear here after you start a service.</p><a class="btn dark" href="index.html#services">Choose a service</a></div>`;
+  } else {
+  $("history").innerHTML=data.map(p=>`
+    <article class="history-item">
+      <div>
+        <div class="history-meta">
+          <span class="status-pill ${p.payment_status==="confirmed"?"done":""}">${label(p)}</span>
+          ${p.payment_method?`<span class="status-pill">${esc(p.payment_method)}</span>`:""}
+        </div>
+        <h3>${esc(p.product)}</h3>
+        <p>${new Date(p.created_at).toLocaleString()}${p.price?` · RM ${Number(p.price).toFixed(2)}`:""}</p>
+      </div>
+      <a class="btn dark history-open" href="chat.html?project=${p.id}">${p.status==="awaiting_payment"?"Pay now ↗":p.delivery_url?"View product ↗":"Open order ↗"}</a>
+    </article>`).join("");
+  }
+  if(window._historyChannel)window.supabaseClient.removeChannel(window._historyChannel);
+  window._historyChannel=window.supabaseClient.channel("history-live-"+user.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:"projects",filter:"user_id=eq."+user.id},()=>init())
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+user.id},payload=>{const n=payload.new;MekyyNotify?.show(n.title+(n.body?" — "+n.body:""),n.type==="success"?"success":"info",6500);})
+    .subscribe();
+}
+$("logout").onclick=async()=>{await window.supabaseClient.auth.signOut();location.href="login.html"};
+window.addEventListener("beforeunload",()=>{if(window._historyChannel)window.supabaseClient.removeChannel(window._historyChannel)});
+init();
+</script>
+</body>
+</html>

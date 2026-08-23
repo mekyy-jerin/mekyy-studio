@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin — MekyyStudio</title>
+<link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body class="admin-bg">
+<header class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+    <span class="brand-name">Mekyy<span>.</span>Studio</span>
+  </a>
+  <div class="nav-buttons"><a href="worker.html">Worker view</a><span class="admin-label">ADMIN</span><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">☾ Dark</button><button id="logout" class="link-button">Logout</button></div>
+</header>
+
+<main class="admin-dashboard">
+  <div class="admin-top">
+    <div><p class="eyebrow">ADMIN OVERVIEW</p><h1>Studio control.</h1><p class="lead">Orders, payments, delivery, refunds and live customer chat — all in one place.</p></div>
+    <button id="refresh" class="btn">Refresh ↻</button>
+  </div>
+
+  <section class="stats-grid">
+    <article><span>MONTHLY REVENUE</span><strong id="monthly-revenue">RM 0.00</strong><small>Confirmed payments this month</small></article>
+    <article><span>ORDERS</span><strong id="order-count">0</strong><small id="active-count">0 active</small></article>
+    <article><span>REFUNDS</span><strong id="refund-count">0</strong><small id="refund-pending">0 pending</small></article>
+    <article><span>CUSTOMERS</span><strong id="customer-count">0</strong><small>Registered customer profiles</small></article>
+  </section>
+  <div class="dashboard-controls">
+    <label>Dashboard month <input id="stats-month" type="month"></label>
+    <span class="muted">Stats are calculated for the selected month.</span>
+  </div>
+
+  <section class="admin-reset-card">
+    <div><p class="eyebrow">DATA CONTROL</p><h2>Manual reset</h2><p class="muted">Use these only when you intentionally need to clear or reset operational data. Storage is removed through the Storage API.</p></div>
+    <div class="reset-actions">
+      <button id="reset-orders" class="btn danger" type="button">Reset orders</button>
+      <button id="reset-payments" class="btn" type="button">Reset payments</button>
+      <button id="reset-delivery" class="btn" type="button">Reset delivery</button>
+      <button id="reset-refunds" class="btn" type="button">Reset refunds</button>
+      <button id="reset-chat" class="btn" type="button">Reset live chat</button>
+      <button id="reset-all" class="btn danger" type="button">Reset everything</button>
+    </div>
+  </section>
+
+  <div id="admin-notice" class="page-notice" hidden></div>
+  <p id="admin-error" class="error"></p>
+
+  <div class="admin-layout">
+    <aside class="admin-projects">
+      <div class="admin-list-head"><b>Orders</b><span id="project-total">0</span></div>
+      <div id="project-list"></div>
+    </aside>
+
+    <section class="admin-chat">
+      <div id="empty-admin" class="admin-note">
+        <h2>Select an order</h2>
+        <p>Manage the order and chat with the customer in real time.</p>
+      </div>
+
+      <div id="chat-panel" style="display:none">
+        <div class="admin-chat-head">
+          <div>
+            <p class="eyebrow">CUSTOMER ORDER</p>
+            <h2 id="project-product"></h2>
+            <p id="project-customer" class="muted"></p>
+          </div>
+          <div class="order-tools">
+            <label>Price (RM)<input id="project-price" type="number" min="0" step="0.01"><small id="project-discount-info" class="price-meta"></small></label>
+            <button id="save-price" class="btn">Save price</button><label>Handle<select id="assigned-worker"><option value="">Admin / unassigned</option></select></label><button id="clear-chat" class="btn danger" type="button">Clear chat</button>
+          </div>
+        </div>
+
+        <div class="order-meta">
+          <span id="project-status"></span>
+          <span id="payment-status"></span>
+          <span id="refund-status"></span>
+          <span id="project-date"></span>
+          <span class="chat-live">LIVE</span>
+        </div>
+
+        <div class="admin-actions">
+          <button id="start-work" class="btn">Start Work</button>
+          <button id="delay" class="btn">Mark Delayed</button>
+          <button id="send-product" class="btn dark">Product Ready / Send</button>
+          <button id="confirm-payment" class="btn success-btn">Confirm Payment</button>
+          <button id="approve-refund" class="btn danger">Approve Refund</button>
+          <button id="reject-refund" class="btn">Reject Refund</button><button id="delete-order" class="btn danger">Delete order</button>
+        </div>
+
+        <div class="delivery-box">
+          <div class="delivery-grid">
+            <label>Delivery link (optional)
+              <input id="delivery-url" type="url" placeholder="https://...">
+            </label>
+            <label>Or upload product file
+              <input id="delivery-file" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar">
+            </label>
+          </div>
+          <div id="delivery-file-name" class="attachment-name">No delivery file selected</div>
+          <small>Upload the finished PNG, JPG, PDF, ZIP or other file directly here. The customer only gets the final download after payment is confirmed.</small>
+        </div>
+
+        <div class="worker-note-box">
+          <label>Private worker note
+            <textarea id="worker-note" rows="3" placeholder="Internal instructions for the assigned worker…"></textarea>
+          </label>
+          <button id="save-worker-note" class="btn" type="button">Save worker note</button>
+          <small>Only admin and the assigned worker can see this note.</small>
+        </div>
+
+        <div id="admin-messages" class="messages"></div>
+
+        <form id="admin-form" class="message-form">
+          <textarea id="admin-message" rows="3" placeholder="Reply to customer…"></textarea>
+          <div class="message-tools">
+            <div class="chat-attachment">
+              <label class="file-btn" for="admin-attachment">
+                <span class="attach-icon">📎</span>
+                <span>Attach file</span>
+                <input id="admin-attachment" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" hidden>
+              </label>
+              <span id="admin-attachment-name" class="attachment-name">No file selected</span>
+              <button id="admin-clear-attachment" class="clear-attachment" type="button" hidden aria-label="Remove selected file">×</button>
+            </div>
+            <div id="admin-attachment-preview" class="attachment-preview" hidden></div>
+          </div>
+          <button class="btn dark send-button" type="submit">Send ↗</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <section class="admin-storage">
+    <div class="admin-section-head">
+      <div>
+        <p class="eyebrow">STORAGE</p>
+        <h2>Saved files.</h2>
+        <p class="muted">View images, chat attachments and delivered files saved in Supabase Storage. Delete files you no longer need to free space.</p>
+      </div>
+      <div class="storage-tools">
+        <button id="refresh-storage" class="btn" type="button">Refresh storage ↻</button>
+        <button id="empty-chat-storage" class="btn danger" type="button">Empty chat files</button>
+        <button id="empty-delivery-storage" class="btn danger" type="button">Empty deliveries</button>
+      </div>
+    </div>
+    <p id="storage-summary" class="muted">Loading storage…</p>
+    <div class="storage-grid">
+      <section class="storage-bucket">
+        <div class="storage-bucket-head"><div><b>Chat files</b><small>Images and attachments sent in chats</small></div><span id="chat-storage-count">0 files</span></div>
+        <div id="chat-storage-list" class="storage-list"></div>
+      </section>
+      <section class="storage-bucket">
+        <div class="storage-bucket-head"><div><b>Deliveries</b><small>Finished files sent to customers</small></div><span id="delivery-storage-count">0 files</span></div>
+        <div id="delivery-storage-list" class="storage-list"></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="admin-crud">
+    <div class="admin-section-head">
+      <div><p class="eyebrow">CUSTOMER & WORKER DIRECTORY</p><h2>People.</h2><p class="muted">View users, change roles, update names and remove accounts.</p></div>
+      <input id="user-search" class="admin-search" placeholder="Search name or email…">
+    </div>
+    <div id="user-list" class="user-table"></div>
+  </section>
+
+  <div id="admin-modal" class="admin-modal" hidden>
+    <div class="admin-modal-card" role="dialog" aria-modal="true">
+      <p class="eyebrow">CONFIRM ACTION</p>
+      <h2 id="modal-title">Are you sure?</h2>
+      <p id="modal-text" class="muted"></p>
+      <div class="modal-actions"><button id="modal-cancel" class="btn">Cancel</button><button id="modal-ok" class="btn dark">Continue</button></div>
+    </div>
+  </div>
+
+<section id="discount-settings" class="settings-card" style="margin-top:24px;">
+  <p class="eyebrow">PRICING & DISCOUNTS</p>
+  <h2>Scheduled discount</h2>
+  <p class="muted">Set a discount percentage and the dates it should be active. Customers will see the discounted package price automatically.</p>
+
+  <form id="discount-form" style="display:grid;gap:14px;max-width:620px;">
+    <label>
+      Discount percentage
+      <input id="discount-percent" type="number" min="0" max="100" step="1" placeholder="Example: 20">
+    </label>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <label>
+        Start date
+        <input id="discount-start" type="date">
+      </label>
+      <label>
+        End date
+        <input id="discount-end" type="date">
+      </label>
+    </div>
+
+    <label style="display:flex;align-items:center;gap:10px;">
+      <input id="discount-enabled" type="checkbox" style="width:auto;">
+      Enable scheduled discount
+    </label>
+
+    <div id="discount-preview" class="form-message">
+      No discount scheduled.
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn dark" type="submit">Save discount</button>
+      <button class="btn" id="discount-clear" type="button">Clear discount</button>
+    </div>
+    <p id="discount-msg" class="form-message"></p>
+  </form>
+</section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="cart-widget.js"></script>
+<script src="notifications.js"></script>
+<script src="security.js"></script>
+<script>
+(function(){const b=document.getElementById("theme-toggle");function apply(){const d=localStorage.getItem("studio-theme")==="dark";document.documentElement.classList.toggle("dark-mode",d);document.body.classList.toggle("dark-mode",d);if(b){b.textContent=d?"☀ Light":"☾ Dark";b.setAttribute("aria-pressed",d)}}if(b)b.onclick=()=>{const d=!document.documentElement.classList.contains("dark-mode");localStorage.setItem("studio-theme",d?"dark":"light");apply()};apply()})();
+</script>
+<script>
+let currentUser=null,projects=[],selected=null,profiles=[],realtimeChannel=null,workers=[],confirmResolver=null,notificationChannel=null;
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
+function money(v){return "RM "+Number(v||0).toFixed(2);}
+function labelStatus(p){
+  if(p.refund_status==="refunded")return"REFUNDED";
+  if(p.refund_status==="requested")return"REFUND REQUESTED";
+  if(p.payment_status==="confirmed")return"COMPLETED / PAID";
+  if(p.payment_status==="submitted")return"PAYMENT SUBMITTED";
+  return({new:"NEW",in_progress:"IN PROGRESS",delayed:"DELAYED",awaiting_payment:"PAYMENT READY"}[p.status]||String(p.status||"").toUpperCase());
+}
+async function auth(){
+  const {data:{user}}=await window.supabaseClient.auth.getUser();
+  if(!user){location.href="login.html";return false;}
+  currentUser=user;
+  const {data:p,error}=await window.supabaseClient.from("profiles").select("role").eq("id",user.id).single();
+  if(error||p?.role!=="admin"){await window.supabaseClient.auth.signOut();location.href="login.html";return false;}
+  return true;
+}
+async function load(){
+  const {data,error}=await window.supabaseClient.from("projects").select("id,user_id,product,package_name,title,status,price,original_price,discount_percent,refund_status,payment_status,payment_method,delivery_url,delivery_path,delivery_name,delivery_type,assigned_worker_id,created_at,delivered_at,refund_requested_at,payment_confirmed_at").order("created_at",{ascending:false});
+  if(error){$("admin-error").textContent="Could not load orders: "+error.message; console.error("Admin projects query failed",error); return;}
+  projects=data||[];
+  let ps=null, pe=null;
+  ({data:ps,error:pe}=await window.supabaseClient.rpc("admin_list_profiles"));
+  if(pe){
+    const fallback=await window.supabaseClient.from("profiles").select("id,email,name,role,created_at");
+    ps=fallback.data; pe=fallback.error;
+  }
+  if(pe){$("admin-error").textContent="Could not load people: "+pe.message; console.error("Admin profiles query failed",pe);return;}
+  profiles=ps||[];
+  workers=profiles.filter(p=>p.role==="worker");
+  renderUsers();
+  const customers=profiles.filter(p=>p.role!=="admin");
+  const monthValue=$("stats-month")?.value;
+  const base=monthValue?new Date(monthValue+"-01T00:00:00"):new Date();
+  const month=base.getMonth(),year=base.getFullYear();
+  const inMonth=(date)=>{const d=new Date(date);return d.getMonth()===month&&d.getFullYear()===year};
+  const monthProjects=projects.filter(p=>inMonth(p.created_at));
+  const revenue=projects.filter(p=>p.status==="completed"&&p.payment_status==="confirmed"&&p.refund_status!=="refunded"&&inMonth(p.payment_confirmed_at||p.created_at)).reduce((sum,p)=>sum+Number(p.price||0),0);
+  $("monthly-revenue").textContent=money(revenue);
+  $("order-count").textContent=monthProjects.length;
+  $("active-count").textContent=monthProjects.filter(p=>p.status!=="completed"&&p.refund_status!=="refunded").length+" active";
+  $("refund-count").textContent=monthProjects.filter(p=>p.refund_status==="refunded"&&inMonth(p.payment_confirmed_at||p.created_at)).length;
+  $("refund-pending").textContent=monthProjects.filter(p=>p.refund_status==="requested").length+" pending";
+  $("customer-count").textContent=customers.filter(p=>inMonth(p.created_at||p.id)).length;
+  $("project-total").textContent=monthProjects.length;
+  renderList();
+  if(selected){
+    const fresh=projects.find(p=>p.id===selected.id);
+    if(fresh){
+      const editing=document.activeElement && $("chat-panel")?.contains(document.activeElement) && ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
+      if(!editing)selectProject(fresh); else selected=fresh;
+    } else {
+      selected=null;
+      $("chat-panel").style.display="none";
+      $("empty-admin").style.display="block";
+    }
+  }
+}
+function renderUsers(){
+  const q=($("user-search")?.value||"").trim().toLowerCase();
+  const rows=profiles.filter(p=>!q || `${p.name||""} ${p.email||""} ${p.role||""}`.toLowerCase().includes(q));
+  $("user-list").innerHTML=rows.map(p=>`<div class="user-row">
+    <div><strong>${esc(p.name||"Unnamed")}</strong><small>${esc(p.email||"")} · ${esc(p.role||"customer")}</small></div>
+    <div class="user-actions">
+      <input class="user-name-edit" data-user="${p.id}" value="${esc(p.name||"")}" aria-label="Name">
+      <select class="user-role-edit" data-user="${p.id}" ${p.id===currentUser.id?"disabled":""}>
+        ${["customer","worker","admin"].map(r=>`<option ${p.role===r?"selected":""}>${r}</option>`).join("")}
+      </select>
+      <button class="btn small save-user" data-user="${p.id}">Save</button>
+      ${p.id!==currentUser.id?`<button class="btn small danger delete-user" data-user="${p.id}">Delete</button>`:""}
+    </div>
+  </div>`).join("") || '<div class="admin-note">No matching users.</div>';
+  $("user-list").querySelectorAll(".save-user").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.user,name=$(`.user-name-edit[data-user="${id}"]`).value.trim(),role=$(`.user-role-edit[data-user="${id}"]`).value;
+    const {error}=await window.supabaseClient.rpc("admin_update_profile",{p_user_id:id,p_name:name,p_role:role});
+    if(error){$("admin-error").textContent=error.message;MekyyNotify?.show(error.message,"error");return;}
+    MekyyNotify?.show("Profile saved successfully.","success");
+    await load();
+  });
+  $("user-list").querySelectorAll(".delete-user").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.user;
+    const p=profiles.find(x=>x.id===id);
+    if(!await askConfirm("Delete this account?",`${p?.name||p?.email||"User"} will be permanently removed.`,"Delete"))return;
+    const {error}=await window.supabaseClient.rpc("admin_delete_user",{p_user_id:id});
+    if(error){$("admin-error").textContent=error.message;return;}
+    selected=null;await load();
+  });
+}
+function askConfirm(title,text,ok="Continue"){
+  return new Promise(resolve=>{
+    confirmResolver=resolve;$("modal-title").textContent=title;$("modal-text").textContent=text;$("modal-ok").textContent=ok;$("admin-modal").hidden=false;
+  });
+}
+$("modal-cancel").onclick=()=>{if(confirmResolver)confirmResolver(false);confirmResolver=null;$("admin-modal").hidden=true;};
+$("modal-ok").onclick=()=>{if(confirmResolver)confirmResolver(true);confirmResolver=null;$("admin-modal").hidden=true;};
+$("user-search").oninput=renderUsers;
+
+function renderList(){
+  $("project-list").innerHTML=projects.length?projects.map(p=>{
+    const c=profiles.find(x=>x.id===p.user_id)||{};
+    return `<button class="admin-project ${selected?.id===p.id?"active":""}" data-id="${p.id}">
+      <strong>${esc(p.product)}${p.package_name?` · ${esc(p.package_name)}`:""}</strong><span>${esc(c.name||c.email||"Customer")}</span>
+      <small>${labelStatus(p)} • ${new Date(p.created_at).toLocaleDateString()}</small>
+    </button>`;
+  }).join(""):'<div class="admin-note">No orders yet.</div>';
+  $("project-list").querySelectorAll(".admin-project").forEach(b=>b.onclick=()=>selectProject(projects.find(p=>String(p.id)===b.dataset.id)));
+}
+function startRealtime(){
+  if(realtimeChannel)window.supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel=window.supabaseClient.channel("admin-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"projects"},()=>load())
+    .subscribe();
+  if(notificationChannel)window.supabaseClient.removeChannel(notificationChannel);
+  notificationChannel=window.supabaseClient.channel("admin-notifications")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+currentUser.id},payload=>{const n=payload.new;MekyyNotify?.show(n.title+(n.body?" — "+n.body:""),n.type==="success"?"success":"info",7000);})
+    .subscribe();
+}
+async function selectProject(p){
+  if(!p)return;
+  selected=p;
+  $("empty-admin").style.display="none";$("chat-panel").style.display="block";
+  const c=profiles.find(x=>x.id===p.user_id)||{};
+  $("project-product").textContent=p.package_name ? `${p.product} · ${p.package_name}` : p.product;
+  $("project-customer").textContent=(c.name||"Customer")+" • "+(c.email||"");
+  $("project-price").value=p.price??"";
+  const original=Number(p.original_price||0),disc=Number(p.discount_percent||0);
+  $("project-discount-info").textContent=original>0&&disc>0?`Original RM ${original.toFixed(2)} · ${disc}% discount`:"Normal price / no stored discount";
+  const {data:workerNote}=await window.supabaseClient.from("worker_notes").select("note").eq("project_id",p.id).maybeSingle();
+  $("worker-note").value=workerNote?.note||"";
+  $("delivery-url").value=p.delivery_url||"";
+  $("delivery-file").value="";
+  $("delivery-file-name").textContent=p.delivery_name ? `Current file: ${p.delivery_name}` : "No delivery file selected";
+  $("assigned-worker").innerHTML='<option value="">Admin / unassigned</option>'+workers.map(w=>`<option value="${w.id}" ${p.assigned_worker_id===w.id?"selected":""}>${esc(w.name||w.email||"Worker")}</option>`).join("");
+  $("project-status").textContent="ORDER: "+String(p.status||"").toUpperCase();
+  $("payment-status").textContent="PAYMENT: "+String(p.payment_status||"unpaid").toUpperCase();
+  $("refund-status").textContent="REFUND: "+String(p.refund_status||"none").toUpperCase();
+  $("project-date").textContent=new Date(p.created_at).toLocaleString();
+  $("start-work").disabled=!["new","delayed"].includes(p.status)||p.refund_status!=="none";
+  $("delay").disabled=!["new","in_progress"].includes(p.status)||p.refund_status!=="none";
+  $("send-product").disabled=!["in_progress","delayed","new"].includes(p.status)||p.refund_status!=="none";
+  $("confirm-payment").disabled=p.payment_status!=="submitted"||p.refund_status!=="none";
+  $("approve-refund").disabled=p.refund_status!=="requested";
+  $("reject-refund").disabled=p.refund_status!=="requested";
+  $("admin-form").style.display=p.refund_status==="refunded"?"none":"grid";
+  await loadMessages();
+  startMessageRealtime();
+}
+let messageChannel=null;
+function startMessageRealtime(){
+  if(messageChannel)window.supabaseClient.removeChannel(messageChannel);
+  if(!selected)return;
+  messageChannel=window.supabaseClient.channel("admin-messages-"+selected.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:"messages",filter:"project_id=eq."+selected.id},loadMessages)
+    .subscribe();
+}
+async function updateProject(patch){
+  if(!selected)return;
+  const {error}=await window.supabaseClient.from("projects").update(patch).eq("id",selected.id);
+  if(error){$("admin-error").textContent=error.message;return false;}
+  await load();return true;
+}
+async function signedUrl(path){
+  if(!path)return null;
+  const {data,error}=await window.supabaseClient.storage.from("chat-files").createSignedUrl(path,3600);
+  return error?null:data?.signedUrl;
+}
+async function loadMessages(){
+  if(!selected)return;
+  const {data,error}=await window.supabaseClient.from("messages").select("id,sender_id,message,created_at,attachment_path,attachment_name,attachment_type,attachment_size").eq("project_id",selected.id).order("created_at",{ascending:true});
+  if(error){$("admin-error").textContent=error.message;return;}
+  const html=[];
+  for(const m of(data||[])){
+    let attachment="";
+    if(m.attachment_path){
+      const url=await signedUrl(m.attachment_path);
+      if(url&&(m.attachment_type||"").startsWith("image/")) attachment=`<div class="attachment-card"><a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(m.attachment_name||"Attached image")}"></a><a class="download-file" href="${esc(url)}" download>Download</a></div>`;
+      else if(url) attachment=`<div class="attachment-card"><a href="${esc(url)}" target="_blank" rel="noopener">📎 ${esc(m.attachment_name||"Attached file")} ↗</a><a class="download-file" href="${esc(url)}" download>Download</a></div>`;
+    }
+    html.push(`<div class="chat-message ${m.sender_id===currentUser.id?"mine":"theirs"}"><small>${m.sender_id===currentUser.id?"You":"Customer"}</small>${m.message&&m.message!=="[Attachment]"?`<p>${esc(m.message)}</p>`:""}${attachment}<time>${new Date(m.created_at).toLocaleString()}</time></div>`);
+  }
+  $("admin-messages").innerHTML=html.length?html.join(""):'<p class="muted">No messages yet.</p>';
+  $("admin-messages").scrollTop=$("admin-messages").scrollHeight;
+}
+async function uploadAdminAttachment(file){
+  if(!file)return null;
+  if(file.size>10*1024*1024)throw new Error("Please keep files under 10 MB.");
+  if(file.type.startsWith("image/") && window.MekyySecurity?.watermarkImage) file=await window.MekyySecurity.watermarkImage(file);
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+  const path=`${selected.user_id}/${selected.id}/${Date.now()}-admin-${safe}`;
+  const {error}=await window.supabaseClient.storage.from("chat-files").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||"application/octet-stream"});
+  if(error)throw error;
+  return {path,name:file.name,type:file.type||"application/octet-stream",size:file.size};
+}
+const adminAttachmentInput = $("admin-attachment");
+const adminAttachmentName = $("admin-attachment-name");
+const adminAttachmentPreview = $("admin-attachment-preview");
+const adminClearAttachment = $("admin-clear-attachment");
+
+adminAttachmentInput.onchange = () => {
+  const file = adminAttachmentInput.files[0];
+  adminAttachmentName.textContent = file ? file.name : "No file selected";
+  adminClearAttachment.hidden = !file;
+  adminAttachmentPreview.hidden = true;
+  adminAttachmentPreview.innerHTML = "";
+  if (file && file.type.startsWith("image/")) {
+    const url = URL.createObjectURL(file);
+    adminAttachmentPreview.innerHTML = `<img src="${url}" alt="Selected image preview">`;
+    adminAttachmentPreview.hidden = false;
+  }
+};
+
+adminClearAttachment.onclick = () => {
+  adminAttachmentInput.value = "";
+  adminAttachmentName.textContent = "No file selected";
+  adminClearAttachment.hidden = true;
+  adminAttachmentPreview.hidden = true;
+  adminAttachmentPreview.innerHTML = "";
+};
+async function uploadDelivery(file){
+  if(!file||!selected)return null;
+  if(file.size>50*1024*1024)throw new Error("Delivery files must be 50 MB or smaller.");
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+  const path=`${selected.user_id}/${selected.id}/${Date.now()}-${safe}`;
+  const {error}=await window.supabaseClient.storage.from("deliveries").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||"application/octet-stream"});
+  if(error)throw error;
+  return {path,name:file.name,type:file.type||"application/octet-stream"};
+}
+$("delivery-file").onchange=()=>{const f=$("delivery-file").files[0];$("delivery-file-name").textContent=f?`${f.name} · ${(f.size/1024/1024).toFixed(2)} MB`:"No delivery file selected";};
+
+$("assigned-worker").onchange=async()=>{if(!selected)return;const ok=await updateProject({assigned_worker_id:$("assigned-worker").value||null});if(ok)MekyyNotify?.show("Order assignment saved.","success");};
+$("save-worker-note").onclick=async()=>{if(!selected)return;const {error}=await window.supabaseClient.rpc("upsert_worker_note",{p_project_id:selected.id,p_note:$("worker-note").value.trim()});if(error){MekyyNotify?.show(error.message,"error");return;}MekyyNotify?.show("Worker note saved.","success");};
+$("clear-chat").onclick=async()=>{
+  if(!selected)return;
+  if(!await askConfirm("Clear this project chat?","All messages and chat attachments for this order will be removed. The order itself stays.", "Clear chat"))return;
+  try {
+    const {data:msgs,error:msgErr}=await window.supabaseClient.from("messages").select("attachment_path").eq("project_id",selected.id);
+    if(msgErr) throw msgErr;
+    const paths=(msgs||[]).map(m=>m.attachment_path).filter(Boolean);
+    if(paths.length){
+      const {error:storageErr}=await window.supabaseClient.storage.from("chat-files").remove(paths);
+      if(storageErr) throw storageErr;
+    }
+    const {error}=await window.supabaseClient.from("messages").delete().eq("project_id",selected.id);
+    if(error) throw error;
+    await loadMessages();
+  } catch(err) { $("admin-error").textContent=err.message||"Could not clear chat."; }
+};
+$("delete-order").onclick=async()=>{
+  if(!selected)return;
+  if(!await askConfirm("Delete this order?", "The order, its chat messages and stored files will be permanently removed.", "Delete order"))return;
+  const id=selected.id;
+  try {
+    const {data:msgs,error:msgErr}=await window.supabaseClient.from("messages").select("attachment_path").eq("project_id",id);
+    if(msgErr) throw msgErr;
+    const chatPaths=(msgs||[]).map(m=>m.attachment_path).filter(Boolean);
+    if(chatPaths.length){
+      const {error:storageErr}=await window.supabaseClient.storage.from("chat-files").remove(chatPaths);
+      if(storageErr) throw storageErr;
+    }
+    if(selected.delivery_path){
+      const {error:deliveryErr}=await window.supabaseClient.storage.from("deliveries").remove([selected.delivery_path]);
+      if(deliveryErr) throw deliveryErr;
+    }
+    const {error:msgDeleteErr}=await window.supabaseClient.from("messages").delete().eq("project_id",id);
+    if(msgDeleteErr) throw msgDeleteErr;
+    const {error:projectErr}=await window.supabaseClient.from("projects").delete().eq("id",id);
+    if(projectErr) throw projectErr;
+    selected=null;$("chat-panel").style.display="none";$("empty-admin").style.display="block";await load();await loadStorage();
+  } catch(err) { $("admin-error").textContent=err.message||"Could not delete order."; }
+};
+$("save-price").onclick=async()=>{const price=Number($("project-price").value||0);await updateProject({price});};
+$("start-work").onclick=async()=>{await updateProject({status:"in_progress"});};
+$("delay").onclick=async()=>{await updateProject({status:"delayed"});};
+$("send-product").onclick=async()=>{
+  const url=$("delivery-url").value.trim();
+  const file=$("delivery-file").files[0];
+  if(!url&&!file){
+    const ok=await askConfirm("No delivery file or link", "Mark the product ready anyway? The customer will receive the payment screen without a download.", "Mark ready");
+    if(!ok)return;
+  }
+  try{
+    $("send-product").disabled=true;
+    const delivery=await uploadDelivery(file);
+    await updateProject({status:"awaiting_payment",delivery_url:url||null,delivery_path:delivery?.path||null,delivery_name:delivery?.name||null,delivery_type:delivery?.type||null,delivered_at:new Date().toISOString()});
+  }catch(err){$("admin-error").textContent=err.message||"Could not upload delivery file.";}
+  finally{if(selected) $("send-product").disabled=false;}
+};
+$("confirm-payment").onclick=async()=>{
+  if(!selected)return;
+  const ok=await askConfirm("Confirm payment?","This marks the order as paid, unlocks the final delivery for the customer and creates a receipt.","Confirm payment");
+  if(!ok)return;
+
+  const projectId=selected.id;
+  const confirmedAt=new Date().toISOString();
+  const saved=await updateProject({status:"completed",payment_status:"confirmed",payment_confirmed_at:confirmedAt});
+  if(!saved)return;
+
+  MekyyNotify?.show("Payment confirmed. Sending receipt email…","success",5000);
+
+  try{
+    const {data:{session},error:sessionError}=await window.supabaseClient.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(!session?.access_token)throw new Error("Admin session not found. Please login again.");
+
+    // V24: use the Supabase Functions client first. This keeps the project URL,
+    // auth headers and function invocation format aligned with the current SDK.
+    let result=null;
+    let invokeError=null;
+    try{
+      const invoked=await window.supabaseClient.functions.invoke("payment-confirmed-email",{
+        body:{projectId}
+      });
+      result=invoked.data;
+      invokeError=invoked.error;
+    }catch(err){
+      invokeError=err;
+    }
+
+    // Fallback: direct request to the exact function endpoint. This also gives
+    // us a useful HTTP status/body when the SDK cannot parse the response.
+    if(invokeError){
+      console.warn("Functions.invoke failed; trying direct Edge Function request:",invokeError);
+      const functionUrl=`${SUPABASE_URL}/functions/v1/payment-confirmed-email`;
+      try{
+        const response=await fetch(functionUrl,{
+          method:"POST",
+          cache:"no-store",
+          headers:{
+            "Content-Type":"application/json",
+            "apikey":SUPABASE_ANON_KEY,
+            "Authorization":`Bearer ${session.access_token}`
+          },
+          body:JSON.stringify({projectId})
+        });
+        const text=await response.text();
+        let directResult;
+        try{directResult=JSON.parse(text);}catch{directResult={raw:text};}
+        if(!response.ok){
+          throw new Error(directResult?.error||directResult?.message||`Edge Function HTTP ${response.status}`);
+        }
+        result=directResult;
+        invokeError=null;
+      }catch(directErr){
+        console.error("Both payment email invocation methods failed:",{invokeError,directErr});
+        const sdkMsg=invokeError?.message||String(invokeError||"");
+        const directMsg=directErr?.message||String(directErr||"");
+        throw new Error(`Email function unreachable. SDK: ${sdkMsg || "unknown"}. Direct: ${directMsg || "unknown"}`);
+      }
+    }
+
+    if(result?.skipped)throw new Error(result.reason||"Email configuration is incomplete.");
+    if(!result?.ok)throw new Error(result?.error||"Email service did not confirm both emails.");
+
+    MekyyNotify?.show("Payment confirmed. Receipt sent to customer and admin email.","success",7000);
+    console.log("Payment email success:",result);
+  }catch(err){
+    console.error("Payment email error:",err);
+    MekyyNotify?.show(`Payment saved, but email failed: ${err.message||"Unknown error"}`,"error",9000);
+  }
+};
+$("approve-refund").onclick=async()=>{if(await askConfirm("Approve refund?","The order will be marked refunded.","Approve refund"))await updateProject({refund_status:"refunded"});};
+$("reject-refund").onclick=async()=>{if(await askConfirm("Reject refund?","The customer will see the refund rejection in their project page.","Reject refund"))await updateProject({refund_status:"rejected"});};
+
+$("admin-form").onsubmit=async e=>{
+  e.preventDefault();if(!selected)return;
+  const text=$("admin-message").value.trim(),file=$("admin-attachment").files[0];
+  if(!text&&!file)return;
+  if(file && !file.type.startsWith("image/") && selected.payment_status!=="confirmed"){MekyyNotify?.show("Only watermarked image previews can be shared before payment confirmation. Other files stay locked.","info",6000);return;}
+  const btn=e.submitter;btn.disabled=true;btn.textContent="Sending…";
+  try{
+    const att=await uploadAdminAttachment(file);
+    const {error}=await window.supabaseClient.rpc("admin_send_message",{
+      p_project_id:selected.id, p_message:text||"[Attachment]",
+      p_attachment_path:att?.path||null, p_attachment_name:att?.name||null,
+      p_attachment_type:att?.type||null, p_attachment_size:att?.size||null
+    });
+    if(error)throw error;
+    $("admin-message").value="";
+      $("admin-attachment").value="";
+      $("admin-attachment-name").textContent="No file selected";
+      $("admin-clear-attachment").hidden=true;
+      $("admin-attachment-preview").hidden=true;
+      $("admin-attachment-preview").innerHTML="";
+    await loadMessages();
+  }catch(err){$("admin-error").textContent=err.message||"Unable to send message.";}
+  finally{btn.disabled=false;btn.textContent="Send ↗";}
+};
+
+function formatBytes(bytes){
+  const n=Number(bytes||0);
+  if(n<1024)return n+" B";
+  if(n<1024*1024)return (n/1024).toFixed(1)+" KB";
+  if(n<1024*1024*1024)return (n/1024/1024).toFixed(1)+" MB";
+  return (n/1024/1024/1024).toFixed(2)+" GB";
+}
+async function listStorageFiles(bucket){
+  const found=[];
+  async function walk(prefix=""){
+    let offset=0;
+    while(true){
+      const {data,error}=await window.supabaseClient.storage.from(bucket).list(prefix,{limit:100,offset,sortBy:{column:"created_at",order:"desc"}});
+      if(error)throw error;
+      const rows=data||[];
+      for(const row of rows){
+        const full=prefix ? `${prefix}/${row.name}` : row.name;
+        if(row.id){
+          found.push({bucket,path:full,name:row.name,size:row.metadata?.size||0,type:row.metadata?.mimetype||"",created:row.created_at});
+        }else{
+          await walk(full);
+        }
+      }
+      if(rows.length<100)break;
+      offset+=rows.length;
+    }
+  }
+  await walk("");
+  return found;
+}
+async function renderStorageList(bucket,files,targetId){
+  const el=$(targetId);
+  if(!files.length){el.innerHTML='<div class="storage-empty">No saved files.</div>';return;}
+  const signed=await Promise.all(files.map(async f=>{
+    if(!(f.type||"").startsWith("image/"))return null;
+    const {data}=await window.supabaseClient.storage.from(bucket).createSignedUrl(f.path,600);
+    return data?.signedUrl||null;
+  }));
+  el.innerHTML=files.map((f,i)=>{
+    const image=(f.type||"").startsWith("image/");
+    return `<article class="storage-file">
+      <div class="storage-thumb">${image&&signed[i]?`<img src="${esc(signed[i])}" alt="" loading="lazy">`:`<span>${image?"IMG":"FILE"}</span>`}</div>
+      <div class="storage-file-info"><strong title="${esc(f.path)}">${esc(f.name)}</strong><small>${esc(f.path)} · ${formatBytes(f.size)}</small></div>
+      <div class="storage-file-actions"><button class="btn storage-view" data-bucket="${esc(bucket)}" data-path="${esc(f.path)}" data-type="${esc(f.type)}">View</button><button class="btn danger storage-delete" data-bucket="${esc(bucket)}" data-path="${esc(f.path)}">Delete</button></div>
+    </article>`;
+  }).join("");
+  el.querySelectorAll(".storage-view").forEach(b=>b.onclick=async()=>{
+    const {data,error}=await window.supabaseClient.storage.from(b.dataset.bucket).createSignedUrl(b.dataset.path,3600);
+    if(error){$("admin-error").textContent=error.message;return;}
+    window.open(data.signedUrl,"_blank","noopener");
+  });
+  el.querySelectorAll(".storage-delete").forEach(b=>b.onclick=async()=>{
+    if(!await askConfirm("Delete this file?","This removes the stored file permanently. If it is a delivery file, its download reference will also be cleared.","Delete file"))return;
+    const {error}=await window.supabaseClient.storage.from(b.dataset.bucket).remove([b.dataset.path]);
+    if(error){$("admin-error").textContent=error.message;return;}
+    if(b.dataset.bucket==="deliveries"){
+      await window.supabaseClient.from("projects").update({delivery_path:null,delivery_name:null,delivery_type:null}).eq("delivery_path",b.dataset.path);
+    }
+    await loadStorage();
+    if(selected)await load();
+  });
+}
+async function loadStorage(){
+  $("storage-summary").textContent="Loading storage…";
+  try{
+    const [chat,deliveries]=await Promise.all([listStorageFiles("chat-files"),listStorageFiles("deliveries")]);
+    const total=chat.reduce((s,f)=>s+Number(f.size||0),0)+deliveries.reduce((s,f)=>s+Number(f.size||0),0);
+    $("chat-storage-count").textContent=`${chat.length} file${chat.length===1?"":"s"}`;
+    $("delivery-storage-count").textContent=`${deliveries.length} file${deliveries.length===1?"":"s"}`;
+    $("storage-summary").textContent=`${chat.length+deliveries.length} stored files · ${formatBytes(total)} total`;
+    renderStorageList("chat-files",chat,"chat-storage-list");
+    renderStorageList("deliveries",deliveries,"delivery-storage-list");
+  }catch(err){$("storage-summary").textContent="Could not load storage.";$("admin-error").textContent=err.message||"Storage error";}
+}
+$("refresh-storage").onclick=loadStorage;
+$("empty-chat-storage").onclick=async()=>{
+  const chat=await listStorageFiles("chat-files");
+  if(!chat.length){$("storage-summary").textContent="Chat storage is already empty.";return;}
+  if(!await askConfirm("Empty all chat files?",`This permanently deletes ${chat.length} saved chat file(s). Chat messages will remain, but their attachments will no longer be available.`,"Empty chat files"))return;
+  try {
+    for(const batch of Array.from({length:Math.ceil(chat.length/100)},(_,i)=>chat.slice(i*100,i*100+100))){
+      const {error}=await window.supabaseClient.storage.from("chat-files").remove(batch.map(f=>f.path));
+      if(error) throw error;
+    }
+    await loadStorage();
+  } catch(err){$("admin-error").textContent=err.message||"Could not empty chat storage.";}
+};
+$("empty-delivery-storage").onclick=async()=>{
+  const files=await listStorageFiles("deliveries");
+  if(!files.length){$("storage-summary").textContent="Delivery storage is already empty.";return;}
+  if(!await askConfirm("Empty all delivery files?",`This permanently deletes ${files.length} finished delivery file(s). Customers will lose their stored downloads.`,"Empty deliveries"))return;
+  try {
+    for(const batch of Array.from({length:Math.ceil(files.length/100)},(_,i)=>files.slice(i*100,i*100+100))){
+      const {error}=await window.supabaseClient.storage.from("deliveries").remove(batch.map(f=>f.path));
+      if(error) throw error;
+    }
+    await window.supabaseClient.from("projects").update({delivery_path:null,delivery_name:null,delivery_type:null}).not("delivery_path","is",null);
+    await loadStorage();
+    await load();
+  } catch(err){$("admin-error").textContent=err.message||"Could not empty delivery storage.";}
+};
+async function resetStorageBucket(bucket){
+  const files=await listStorageFiles(bucket);
+  for(const batch of Array.from({length:Math.ceil(files.length/100)},(_,i)=>files.slice(i*100,i*100+100))){
+    if(batch.length){const {error}=await window.supabaseClient.storage.from(bucket).remove(batch.map(f=>f.path));if(error)throw error;}
+  }
+}
+async function doReset(kind){
+  const labels={orders:"all orders, payments, refunds and linked chat records",payments:"all payment states",delivery:"all delivery files and delivery references",refunds:"all refund states",chat:"all live chat messages and chat files",all:"all orders, payments, refunds, delivery files and chat"};
+  if(!await askConfirm("Reset "+kind+"?","This will clear "+labels[kind]+". This cannot be undone.","Reset"))return;
+  try{
+    if(kind==="orders"||kind==="all"){await resetStorageBucket("chat-files");await resetStorageBucket("deliveries");const {error}=await window.supabaseClient.rpc("admin_reset_orders");if(error)throw error;}
+    else if(kind==="payments"){const {error}=await window.supabaseClient.rpc("admin_reset_payments");if(error)throw error;}
+    else if(kind==="delivery"){await resetStorageBucket("deliveries");const {error}=await window.supabaseClient.rpc("admin_reset_delivery");if(error)throw error;}
+    else if(kind==="refunds"){const {error}=await window.supabaseClient.rpc("admin_reset_refunds");if(error)throw error;}
+    else if(kind==="chat"){await resetStorageBucket("chat-files");const {error}=await window.supabaseClient.rpc("admin_reset_chat");if(error)throw error;}
+    if(kind==="all"){}
+    MekyyNotify?.show("Reset completed.","success",4500);selected=null;$("chat-panel").style.display="none";$("empty-admin").style.display="block";await load();await loadStorage();
+  }catch(e){$("admin-error").textContent=e.message||"Reset failed.";MekyyNotify?.show(e.message||"Reset failed.","error",7000)}
+}
+$("reset-orders").onclick=()=>doReset("orders");
+$("reset-payments").onclick=()=>doReset("payments");
+$("reset-delivery").onclick=()=>doReset("delivery");
+$("reset-refunds").onclick=()=>doReset("refunds");
+$("reset-chat").onclick=()=>doReset("chat");
+$("reset-all").onclick=()=>doReset("all");
+$("stats-month").value=new Date().toISOString().slice(0,7);
+$("stats-month").onchange=load;
+$("refresh").onclick=load;
+$("logout").onclick=async()=>{await window.supabaseClient.auth.signOut();location.href="login.html";};
+(async()=>{if(await auth()){await load();await loadStorage();startRealtime();setInterval(()=>load(),5000);}})();
+window.addEventListener("beforeunload",()=>{if(messageChannel)window.supabaseClient.removeChannel(messageChannel);if(realtimeChannel)window.supabaseClient.removeChannel(realtimeChannel);if(notificationChannel)window.supabaseClient.removeChannel(notificationChannel);});
+</script>
+
+
+
+
+<script>
+/* MekyyStudio server-side scheduled discount settings */
+(function () {
+  const $ = id => document.getElementById(id);
+  const table = "site_settings";
+  const settingKey = "store_discount";
+
+  async function getClient() {
+    return window.supabaseClient;
+  }
+
+  async function loadDiscount() {
+    const supabase = await getClient();
+    const { data, error } = await supabase
+      .from(table)
+      .select("value")
+      .eq("key", settingKey)
+      .maybeSingle();
+
+    if (error) {
+      if ($("discount-msg")) $("discount-msg").textContent = error.message;
+      return;
+    }
+
+    if (!data || !data.value) return;
+
+    const d = typeof data.value === "string"
+      ? JSON.parse(data.value)
+      : data.value;
+
+    $("discount-percent").value = d.percent ?? "";
+    $("discount-start").value = d.start ?? "";
+    $("discount-end").value = d.end ?? "";
+    $("discount-enabled").checked = !!d.enabled;
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const percent = Number($("discount-percent").value || 0);
+    const start = $("discount-start").value;
+    const end = $("discount-end").value;
+    const enabled = $("discount-enabled").checked;
+
+    if (!enabled || !percent) {
+      $("discount-preview").textContent = "No active discount.";
+      return;
+    }
+
+    $("discount-preview").textContent =
+      `${percent}% off${start ? " from " + start : ""}${end ? " until " + end : ""}.`;
+  }
+
+  async function saveDiscount(value) {
+    const supabase = await getClient();
+
+    const { error } = await supabase
+      .from(table)
+      .upsert({
+        key: settingKey,
+        value: value,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+
+    if (error) throw error;
+  }
+
+  ["discount-percent", "discount-start", "discount-end", "discount-enabled"]
+    .forEach(id => $(id)?.addEventListener("input", updatePreview));
+
+  $("discount-enabled")?.addEventListener("change", updatePreview);
+
+  $("discount-form")?.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const msg = $("discount-msg");
+    msg.textContent = "";
+
+    const percent = Number($("discount-percent").value);
+    const start = $("discount-start").value;
+    const end = $("discount-end").value;
+    const enabled = $("discount-enabled").checked;
+
+    if (percent < 0 || percent > 100) {
+      msg.textContent = "Discount must be between 0% and 100%.";
+      return;
+    }
+
+    if (start && end && start > end) {
+      msg.textContent = "End date cannot be before start date.";
+      return;
+    }
+
+    try {
+      await saveDiscount({
+        percent,
+        start,
+        end,
+        enabled,
+        updatedAt: new Date().toISOString()
+      });
+
+      msg.textContent = "Discount saved for all customers.";
+      msg.className = "form-message success";
+      updatePreview();
+    } catch (err) {
+      msg.textContent = err.message || "Could not save discount.";
+      msg.className = "form-message";
+    }
+  });
+
+  $("discount-clear")?.addEventListener("click", async function () {
+    const msg = $("discount-msg");
+
+    try {
+      await saveDiscount({
+        percent: 0,
+        start: "",
+        end: "",
+        enabled: false,
+        updatedAt: new Date().toISOString()
+      });
+
+      $("discount-percent").value = "";
+      $("discount-start").value = "";
+      $("discount-end").value = "";
+      $("discount-enabled").checked = false;
+
+      msg.textContent = "Discount cleared for all customers.";
+      msg.className = "form-message success";
+      updatePreview();
+    } catch (err) {
+      msg.textContent = err.message || "Could not clear discount.";
+      msg.className = "form-message";
+    }
+  });
+
+  async function bootDiscount() {
+    await loadDiscount();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootDiscount);
+  } else {
+    bootDiscount();
+  }
+})();
+</script>
+
+</body>
+</html>

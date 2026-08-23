@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cart — MekyyStudio</title>
+<link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="index.html">
+    <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+    <span class="brand-name">Mekyy<span>.</span>Studio</span>
+  </a>
+  <div class="nav-buttons"><a href="history.html">History</a><a href="profile.html">Profile</a><button id="logout" class="link-button">Logout</button></div>
+</header>
+
+<main class="account-page compact-cart-page">
+  <section class="compact-cart-card">
+    <div class="page-heading">
+      <p class="eyebrow">YOUR SPACE</p>
+      <h1>Cart & <em>payments.</em></h1>
+      <p class="lead">Your saved services and active orders stay together here.</p>
+    </div>
+    <div id="cart-content"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="packages.js"></script>
+<script src="pricing.js"></script>
+<script src="cart-widget.js"></script>
+<script src="notifications.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function getCart(){try{return JSON.parse(localStorage.getItem("studio-cart")||"[]")}catch{return[]}}
+function saveCart(v){localStorage.setItem("studio-cart",JSON.stringify(v))}
+function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+function money(v){return "RM "+Number(v||0).toFixed(2)}
+async function init(){
+  const {data:{user}}=await window.supabaseClient.auth.getUser();
+  if(!user){location.href="login.html";return}
+  const {data:orders,error}=await window.supabaseClient.from("projects").select("id,product,package_name,status,price,payment_status,refund_status,created_at").eq("user_id",user.id).neq("status","completed").order("created_at",{ascending:false});
+  if(error){$("cart-content").innerHTML=`<p class="error">${esc(error.message)}</p>`;return}
+  await window.MekyyPricing.load();
+  const items=getCart().map(window.MekyyPricing.normalizeItem);
+  saveCart(items);
+  $("cart-content").innerHTML=`
+    <div class="cart-section-title cart-title-row"><span>SAVED SERVICES · ${items.length}</span>${items.length?`<button id="clear-cart" class="cart-clear" type="button">Clear cart</button>`:""}</div>
+    ${items.length?items.map((x,i)=>`<div class="cart-page-item"><div><small>${esc(x.category||"Design Service")}</small><strong>${esc(x.product)}</strong><span>${x.package?esc(x.package)+" · "+money(x.price):"Package not selected"}</span></div><div class="cart-item-actions"><button class="btn cart-cancel" data-cancel="${i}" type="button">Cancel</button><button class="btn danger cart-delete" data-remove="${i}" type="button" aria-label="Delete ${esc(x.product)}">Delete</button></div></div>`).join(""):`<div class="empty-state"><h2>No saved services.</h2><p>Add a service from the products page.</p><a class="btn dark" href="index.html#services">Browse services</a></div>`}
+    ${items.length?`<button id="start-orders" class="btn dark cart-page-start">Start selected order${items.length>1?"s":""} →</button>`:""}
+    <div class="cart-section-title active-orders-title">ACTIVE ORDERS</div>
+    ${orders?.length?orders.map(p=>`<a class="cart-page-order ${p.status==="awaiting_payment"?"payment-ready":""}" href="chat.html?project=${p.id}#payment"><div><strong>${esc(p.product)}${p.package_name?` · ${esc(p.package_name)}`:""}</strong><span>${p.status==="awaiting_payment"?"PAYMENT READY":p.payment_status==="submitted"?"PAYMENT SUBMITTED":String(p.status).toUpperCase()} ${p.price? "· "+money(p.price):""}</span></div><b>→</b></a>`).join(""):`<p class="muted">No active orders yet.</p>`}
+  `;
+  const removeItem=(index)=>{const c=getCart();c.splice(Number(index),1);saveCart(c);init();if(window.mekyyCartRefresh)window.mekyyCartRefresh()};
+  $("cart-content").querySelectorAll("[data-remove], [data-cancel]").forEach(b=>b.onclick=()=>removeItem(b.dataset.remove ?? b.dataset.cancel));
+  const clearCart=$("clear-cart");
+  if(clearCart) clearCart.onclick=()=>{saveCart([]);init();if(window.mekyyCartRefresh)window.mekyyCartRefresh()};
+  const start=$("start-orders");
+  if(start)start.onclick=async()=>{
+    start.disabled=true;start.textContent="Starting…";
+    const c=getCart();
+    if(c.some(item=>String(item.package||"").toLowerCase()==="premium")){
+      MekyyNotify?.show("Premium is temporarily locked. Remove Premium from your cart and choose Simple or Professional.","info",6000);
+      start.disabled=false;start.textContent="Start selected order →";return;
+    }
+    let first=null;
+    for(const item of c){
+      const {data,error}=await window.supabaseClient.from("projects").insert({user_id:user.id,product:item.product,package_name:item.package||null,title:item.package?`${item.product} — ${item.package}`:item.product,price:window.MekyyPricing.discounted(window.MekyyPricing.originalForCart(item)),original_price:window.MekyyPricing.originalForCart(item),discount_percent:window.MekyyPricing.getDiscount(),status:"new"}).select("id").single();
+      if(error){MekyyNotify?.show(error.message,"error",7000);start.disabled=false;start.textContent="Start selected order →";return}
+      if(!first)first=data.id;
+    }
+    saveCart([]);location.href="chat.html?project="+first;
+  };
+}
+$("logout").onclick=async()=>{await window.supabaseClient.auth.signOut();location.href="login.html"};
+init();
+</script>
+<div id="cart-confirm" class="cart-confirm" hidden>
+  <div class="cart-confirm-card" role="dialog" aria-modal="true" aria-labelledby="cart-confirm-title">
+    <p class="eyebrow">CART</p>
+    <h2 id="cart-confirm-title">Remove this service?</h2>
+    <p id="cart-confirm-text" class="muted">The saved service will be removed from your cart.</p>
+    <div class="cart-confirm-actions"><button id="cart-confirm-cancel" class="btn" type="button">Keep it</button><button id="cart-confirm-delete" class="btn danger" type="button">Delete</button></div>
+  </div>
+</div>
+<script>
+// Keep cart cancellation/deletion inside the page instead of using browser alerts.
+(function(){
+  const modal=document.getElementById('cart-confirm');
+  const cancel=document.getElementById('cart-confirm-cancel');
+  const remove=document.getElementById('cart-confirm-delete');
+  let pending=null;
+  function close(){modal.hidden=true;pending=null;}
+  function open(index,label){pending=index;document.getElementById('cart-confirm-title').textContent='Remove this service?';document.getElementById('cart-confirm-text').textContent=label+' will be removed from your cart.';modal.hidden=false;}
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-remove],[data-cancel]');
+    if(!btn)return;
+    e.preventDefault();
+    const row=btn.closest('.cart-page-item');
+    const label=row?.querySelector('strong')?.textContent||'This service';
+    open(Number(btn.dataset.remove ?? btn.dataset.cancel),label);
+  });
+  cancel.onclick=close;
+  remove.onclick=()=>{if(pending===null)return;const c=getCart();c.splice(pending,1);saveCart(c);close();init();if(window.mekyyCartRefresh)window.mekyyCartRefresh();};
+  document.getElementById('clear-cart')?.addEventListener('click',()=>{saveCart([]);init();if(window.mekyyCartRefresh)window.mekyyCartRefresh();});
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+})();
+</script>
+</body>
+</html>

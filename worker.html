@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Worker — MekyyStudio</title><link rel="stylesheet" href="style.css">
+<script>(function(){try{if(localStorage.getItem("studio-theme")==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+<body class="admin-bg">
+<header class="nav">
+  <a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
+  <div class="nav-buttons"><span class="admin-label">WORKER</span><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">☾ Dark</button><button id="logout" class="link-button">Logout</button></div>
+</header>
+<main class="admin-dashboard">
+  <div class="admin-top"><div><p class="eyebrow">WORKER SPACE</p><h1>Your assigned work.</h1><p class="lead">Handle assigned orders, update progress and chat live with customers.</p></div><button id="refresh" class="btn">Refresh ↻</button></div>
+  <div id="worker-notice" class="page-notice" hidden></div>
+  <p id="worker-error" class="error"></p>
+  <div class="admin-layout">
+    <aside class="admin-projects"><div class="admin-list-head"><b>Assigned orders</b><span id="project-total">0</span></div><div id="project-list"></div></aside>
+    <section class="admin-chat">
+      <div id="empty-worker" class="admin-note"><h2>Select an order</h2><p>Your assigned customer conversations will appear here.</p></div>
+      <div id="worker-panel" style="display:none">
+        <div class="admin-chat-head"><div><p class="eyebrow">ASSIGNED ORDER</p><h2 id="project-product"></h2><p id="project-customer" class="muted"></p></div></div>
+        <div class="order-meta"><span id="project-status"></span><span id="payment-status"></span><span id="project-date"></span><span class="chat-live">LIVE</span></div>
+        <div class="admin-actions">
+          <button id="start-work" class="btn">Start Work</button><button id="delay" class="btn">Mark Delayed</button><button id="send-product" class="btn dark">Product Ready / Send</button>
+        </div>
+        <div class="worker-note-box"><label>Private note from admin<textarea id="worker-note" rows="3" placeholder="Admin instructions…"></textarea></label><button id="save-worker-note" class="btn" type="button">Save note</button></div>
+        <div class="delivery-box">
+          <div class="delivery-grid">
+            <label>Delivery link (optional)<input id="delivery-url" type="url" placeholder="https://..."></label>
+            <label>Upload finished product<input id="delivery-file" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"></label>
+          </div>
+          <div id="delivery-file-name" class="attachment-name">No delivery file selected</div>
+        </div>
+        <div id="worker-messages" class="messages"></div>
+        <form id="worker-form" class="message-form">
+          <textarea id="worker-message" rows="3" placeholder="Reply to customer…"></textarea>
+          <div class="message-tools"><div class="chat-attachment"><label class="file-btn" for="worker-attachment"><span class="attach-icon">📎</span><span>Attach file</span><input id="worker-attachment" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" hidden></label><span id="worker-attachment-name" class="attachment-name">No file selected</span><button id="worker-clear" class="clear-attachment" type="button" hidden>×</button></div><div id="worker-preview" class="attachment-preview" hidden></div></div>
+          <button class="btn dark send-button" type="submit">Send ↗</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</main>
+<div id="worker-modal" class="admin-modal" hidden><div class="admin-modal-card"><p class="eyebrow">CONFIRM ACTION</p><h2 id="wm-title"></h2><p id="wm-text" class="muted"></p><div class="modal-actions"><button id="wm-cancel" class="btn">Cancel</button><button id="wm-ok" class="btn dark">Continue</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
+<script src="notifications.js"></script>
+<script src="security.js"></script>
+<script>
+(function(){const b=document.getElementById("theme-toggle");function apply(){const d=localStorage.getItem("studio-theme")==="dark";document.documentElement.classList.toggle("dark-mode",d);document.body.classList.toggle("dark-mode",d);if(b){b.textContent=d?"☀ Light":"☾ Dark";b.setAttribute("aria-pressed",d)}}if(b)b.onclick=()=>{const d=!document.documentElement.classList.contains("dark-mode");localStorage.setItem("studio-theme",d?"dark":"light");apply()};apply()})();
+</script>
+<script>
+const $=id=>document.getElementById(id);let me=null,projects=[],selected=null,msgChannel=null,projectChannel=null,notificationChannel=null,resolveConfirm=null;
+const esc=v=>String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+function ask(title,text,ok="Continue"){return new Promise(r=>{resolveConfirm=r;$("wm-title").textContent=title;$("wm-text").textContent=text;$("wm-ok").textContent=ok;$("worker-modal").hidden=false})}
+$("wm-cancel").onclick=()=>{resolveConfirm?.(false);resolveConfirm=null;$("worker-modal").hidden=true};$("wm-ok").onclick=()=>{resolveConfirm?.(true);resolveConfirm=null;$("worker-modal").hidden=true};
+async function auth(){const {data:{user}}=await window.supabaseClient.auth.getUser();if(!user){location.href="login.html";return false}me=user;const {data:p}=await window.supabaseClient.from("profiles").select("role").eq("id",user.id).single();if(p?.role!=="worker"){location.href=p?.role==="admin"?"admin.html":"login.html";return false}return true}
+async function load(){const {data,error}=await window.supabaseClient.from("projects").select("id,user_id,product,title,status,price,payment_status,refund_status,delivery_url,delivery_path,delivery_name,created_at").eq("assigned_worker_id",me.id).order("created_at",{ascending:false});if(error){$("worker-error").textContent=error.message;return}projects=data||[];$("project-total").textContent=projects.length;renderList();if(selected){const p=projects.find(x=>x.id===selected.id);if(p){const editing=document.activeElement&&$("worker-panel")?.contains(document.activeElement)&&["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);if(!editing)selectProject(p);else selected=p}else{selected=null;$("worker-panel").style.display="none";$("empty-worker").style.display="block";}}}
+function renderList(){$("project-list").innerHTML=projects.length?projects.map(p=>`<button class="admin-project ${selected?.id===p.id?"active":""}" data-id="${p.id}"><strong>${esc(p.product)}</strong><span>${esc(p.status)}${p.price?" · RM "+Number(p.price).toFixed(2):""}</span><small>${new Date(p.created_at).toLocaleDateString()}</small></button>`).join(""):'<div class="admin-note">No orders assigned yet.</div>';$("project-list").querySelectorAll(".admin-project").forEach(b=>b.onclick=()=>selectProject(projects.find(p=>String(p.id)===b.dataset.id)))}
+async function selectProject(p){if(!p)return;selected=p;$("empty-worker").style.display="none";$("worker-panel").style.display="block";$("project-product").textContent=p.product;const {data:c}=await window.supabaseClient.from("profiles").select("name,email").eq("id",p.user_id).single();$("project-customer").textContent=(c?.name||"Customer")+" • "+(c?.email||"");$("project-status").textContent="ORDER: "+String(p.status).toUpperCase();$("payment-status").textContent="PAYMENT: "+String(p.payment_status||"unpaid").toUpperCase();$("project-date").textContent=new Date(p.created_at).toLocaleString();$("delivery-url").value=p.delivery_url||"";const {data:workerNote}=await window.supabaseClient.from("worker_notes").select("note").eq("project_id",p.id).maybeSingle();$("worker-note").value=workerNote?.note||"";$("delivery-file").value="";$("delivery-file-name").textContent=p.delivery_name?`Current file: ${p.delivery_name}`:"No delivery file selected";$("start-work").disabled=!["new","delayed"].includes(p.status);$("delay").disabled=!["new","in_progress"].includes(p.status);$("send-product").disabled=!["new","in_progress","delayed"].includes(p.status);await loadMessages();startRealtime()}
+function startRealtime(){if(msgChannel)window.supabaseClient.removeChannel(msgChannel);msgChannel=window.supabaseClient.channel("worker-msg-"+selected.id).on("postgres_changes",{event:"*",schema:"public",table:"messages",filter:"project_id=eq."+selected.id},loadMessages).subscribe()}
+async function signed(path,bucket="chat-files"){if(!path)return null;const {data,error}=await window.supabaseClient.storage.from(bucket).createSignedUrl(path,3600);return error?null:data?.signedUrl}
+async function loadMessages(){if(!selected)return;const {data,error}=await window.supabaseClient.from("messages").select("id,sender_id,message,created_at,attachment_path,attachment_name,attachment_type").eq("project_id",selected.id).order("created_at",{ascending:true});if(error){$("worker-error").textContent=error.message;return}const out=[];for(const m of data||[]){let a="";if(m.attachment_path){const u=await signed(m.attachment_path);if(u&&(m.attachment_type||"").startsWith("image/"))a=`<div class="attachment-card"><a href="${esc(u)}" target="_blank"><img src="${esc(u)}" alt=""></a><a class="download-file" href="${esc(u)}" download>Download</a></div>`;else if(u)a=`<div class="attachment-card"><a href="${esc(u)}" target="_blank">📎 ${esc(m.attachment_name||"File")} ↗</a><a class="download-file" href="${esc(u)}" download>Download</a></div>`}out.push(`<div class="chat-message ${m.sender_id===me.id?"mine":"theirs"}"><small>${m.sender_id===me.id?"You":"Customer"}</small>${m.message&&m.message!=="[Attachment]"?`<p>${esc(m.message)}</p>`:""}${a}<time>${new Date(m.created_at).toLocaleString()}</time></div>`)}$("worker-messages").innerHTML=out.join("")||'<p class="muted">No messages yet.</p>';$("worker-messages").scrollTop=$("worker-messages").scrollHeight}
+async function upload(bucket,file,pathPrefix){if(!file)return null;if(file.size>50*1024*1024)throw Error("File must be 50 MB or smaller.");if(bucket==="chat-files"&&file.type.startsWith("image/")&&window.MekyySecurity?.watermarkImage)file=await window.MekyySecurity.watermarkImage(file);const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path=`${pathPrefix}/${Date.now()}-${safe}`;const {error}=await window.supabaseClient.storage.from(bucket).upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||"application/octet-stream"});if(error)throw error;return {path,name:file.name,type:file.type||"application/octet-stream"}}
+$("worker-attachment").onchange=()=>{const f=$("worker-attachment").files[0];$("worker-attachment-name").textContent=f?f.name:"No file selected";$("worker-clear").hidden=!f;if(f?.type.startsWith("image/")){$("worker-preview").innerHTML=`<img src="${URL.createObjectURL(f)}">`;$("worker-preview").hidden=false}else $("worker-preview").hidden=true};
+$("worker-clear").onclick=()=>{$("worker-attachment").value="";$("worker-attachment-name").textContent="No file selected";$("worker-clear").hidden=true;$("worker-preview").hidden=true};
+async function update(patch){const {error}=await window.supabaseClient.from("projects").update(patch).eq("id",selected.id);if(error){$("worker-error").textContent=error.message;MekyyNotify?.show(error.message,"error");return false}await load();return true}
+$("start-work").onclick=async()=>{if(await update({status:"in_progress"}))MekyyNotify?.show("Work started.","success");};$("delay").onclick=async()=>{if(await update({status:"delayed"}))MekyyNotify?.show("Order marked delayed.","info");};
+$("save-worker-note").onclick=async()=>{if(!selected)return;const {error}=await window.supabaseClient.rpc("upsert_worker_note",{p_project_id:selected.id,p_note:$("worker-note").value.trim()});if(error){MekyyNotify?.show(error.message,"error");return;}MekyyNotify?.show("Worker note saved.","success");};
+$("send-product").onclick=async()=>{const url=$("delivery-url").value.trim(),file=$("delivery-file").files[0];if(!url&&!file&&!await ask("No delivery file or link","Mark the product ready without a download?","Mark ready"))return;try{const d=await upload("deliveries",file,`${selected.user_id}/${selected.id}`);await update({status:"awaiting_payment",delivery_url:url||null,delivery_path:d?.path||null,delivery_name:d?.name||null,delivery_type:d?.type||null,delivered_at:new Date().toISOString()})}catch(e){$("worker-error").textContent=e.message}};
+$("worker-form").onsubmit=async e=>{e.preventDefault();const text=$("worker-message").value.trim(),file=$("worker-attachment").files[0];if(!text&&!file)return;if(file&&!file.type.startsWith("image/")&&selected.payment_status!=="confirmed"){MekyyNotify?.show("Only watermarked image previews can be shared before payment confirmation. Other files stay locked.","info",6000);return;}try{const a=await upload("chat-files",file,`${selected.user_id}/${selected.id}`);const {error}=await window.supabaseClient.rpc("worker_send_message",{p_project_id:selected.id,p_message:text||"[Attachment]",p_attachment_path:a?.path||null,p_attachment_name:a?.name||null,p_attachment_type:a?.type||null,p_attachment_size:file?.size||null});if(error)throw error;$("worker-message").value="";$("worker-clear").click();await loadMessages()}catch(e){$("worker-error").textContent=e.message}};
+$("refresh").onclick=load;$("logout").onclick=async()=>{await window.supabaseClient.auth.signOut();location.href="login.html"};
+(async()=>{if(await auth()){await load();notificationChannel=window.supabaseClient.channel("worker-notifications").on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+me.id},payload=>{const n=payload.new;MekyyNotify?.show(n.title+(n.body?" — "+n.body:""),n.type==="success"?"success":"info",7000)}).subscribe();setInterval(load,5000)}})();
+window.addEventListener("beforeunload",()=>{if(msgChannel)window.supabaseClient.removeChannel(msgChannel);if(projectChannel)window.supabaseClient.removeChannel(projectChannel);if(notificationChannel)window.supabaseClient.removeChannel(notificationChannel)});
+</script></body></html>

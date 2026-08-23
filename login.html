@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Login — MekyyStudio</title>
+
+    <link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+</head>
+
+<body>
+
+
+
+    <main class="auth">
+
+        <div class="auth-box">
+
+            <!-- Logo -->
+            <a class="brand" href="index.html">
+  <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
+  <span class="brand-name">Mekyy<span>.</span>Studio</span>
+</a>
+
+            <!-- Heading -->
+            <p class="eyebrow">
+                CUSTOMER LOGIN
+            </p>
+
+            <h1>
+                Welcome back.
+            </h1>
+
+            <p class="muted">
+                Login to access your projects, cart and messages.
+            </p>
+
+            <!-- Login Form -->
+            <form id="login-form">
+
+                <label>
+                    Email
+
+                    <input
+                        id="email"
+                        type="email"
+                        required
+                        placeholder="you@example.com"
+                    >
+                </label>
+
+                <label>
+                    Password
+
+                    <input
+                        id="password"
+                        type="password"
+                        required
+                        placeholder="Your password"
+                    >
+                </label>
+
+                <p
+                    id="error"
+                    class="error"
+                ></p>
+
+                <button
+                    class="btn dark"
+                    type="submit"
+                >
+                    Login
+                </button>
+
+            </form>
+
+            <!-- Register -->
+            <p class="bottom">
+                No account?
+
+                <a href="register.html">
+                    Register
+                </a>
+            </p>
+
+        </div>
+
+    </main>
+
+
+    <!-- SUPABASE -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="supabase-config.js"></script>
+<script src="packages.js"></script>
+<script src="pricing.js"></script>
+
+
+    <!-- LOGIN SCRIPT -->
+
+<script>
+const loginForm = document.getElementById("login-form");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const error = document.getElementById("error");
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  error.textContent = "";
+
+  const { data, error: loginError } =
+    await window.supabaseClient.auth.signInWithPassword({
+      email: emailInput.value.trim(),
+      password: passwordInput.value
+    });
+
+  if (loginError) { error.textContent = loginError.message; return; }
+
+  const user = data.user;
+  if (!user) { error.textContent = "Login failed. User not found."; return; }
+
+  const { data: profile, error: profileError } =
+    await window.supabaseClient.from("profiles").select("role").eq("id", user.id).single();
+
+  if (profileError) { error.textContent = "Unable to check account role."; return; }
+
+  if (profile.role === "admin") {
+    window.location.href = "admin.html";
+    return;
+  }
+  if (profile.role === "worker") {
+    window.location.href = "worker.html";
+    return;
+  }
+
+  const q = new URLSearchParams(location.search);
+  const product = q.get("product");
+  const tier = q.get("package");
+
+  if (product && tier) {
+    await window.MekyyPricing.load();
+    const originalPrice = Number(q.get("originalPrice") || window.MEKYY_PACKAGES?.[product]?.[tier]?.price || q.get("price") || 0);
+    const price = window.MekyyPricing.discounted(originalPrice);
+    let cart = [];
+    try { cart = JSON.parse(localStorage.getItem("studio-cart") || "[]"); } catch {}
+    cart.push({product,package:tier,originalPrice,price,discount:window.MekyyPricing.getDiscount(),category:q.get("category")||"Design Service",addedAt:new Date().toISOString()});
+    localStorage.setItem("studio-cart", JSON.stringify(cart));
+  }
+
+  window.location.href = "index.html";
+});
+</script>
+
+</body>
+
+</html>
