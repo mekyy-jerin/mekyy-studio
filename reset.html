@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Reset Password — MekyyStudio</title><link rel="stylesheet" href="style.css"><script>(function(){try{var t=localStorage.getItem('studio-theme');if(t==='dark')document.documentElement.classList.add('dark-mode')}catch(e){}})();</script></head>
+<body><main class="auth"><div class="auth-box">
+<a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
+<p class="eyebrow">ACCOUNT SECURITY</p><h1>Set a new password.</h1><p class="muted">Choose a new password for your MekyyStudio account.</p>
+<form id="form"><label>New password<input id="password" type="password" minlength="6" required placeholder="At least 6 characters" autocomplete="new-password"></label><label>Confirm password<input id="confirm" type="password" minlength="6" required placeholder="Repeat password" autocomplete="new-password"></label><p id="error" class="error"></p><p id="success" class="success"></p><button class="btn dark" type="submit">Update password</button></form>
+<p class="bottom"><a href="login.html">Back to login</a></p></div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script>
+const form=document.getElementById('form'),error=document.getElementById('error'),success=document.getElementById('success');
+window.supabaseClient.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')success.textContent='Recovery session ready.'});
+form.addEventListener('submit',async e=>{e.preventDefault();error.textContent='';success.textContent='';const p=document.getElementById('password').value,c=document.getElementById('confirm').value;if(p!==c){error.textContent='Passwords do not match.';return}const {error:err}=await window.supabaseClient.auth.updateUser({password:p});if(err){error.textContent=err.message;return}success.textContent='Password updated. Redirecting to login…';setTimeout(async()=>{await window.supabaseClient.auth.signOut();location.href='login.html'},1200)});
+</script></body></html>
