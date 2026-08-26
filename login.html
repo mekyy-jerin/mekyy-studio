@@ -1,68 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Login — MekyyStudio</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Login — MekyyStudio</title><link rel="stylesheet" href="style.css">
 <script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
-<style>
-.auth-mode{display:flex;gap:8px;margin:18px 0}.auth-mode button{flex:1}.otp-box{display:none;gap:10px;margin-top:12px}.otp-box input{letter-spacing:5px;text-align:center}.form-note{margin:10px 0;font-size:.9rem}.success{color:#15803d}.danger-link{background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;font:inherit}
-</style>
-</head>
-<body>
-<main class="auth">
-  <div class="auth-box">
-    <a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
-    <p class="eyebrow">CUSTOMER LOGIN</p>
-    <h1>Welcome back.</h1>
-    <p class="muted">Use your password or receive a one-time code by email.</p>
-
-    <div class="auth-mode">
-      <button id="password-mode" class="btn dark" type="button">Password</button>
-      <button id="code-mode" class="btn" type="button">Email code</button>
-    </div>
-
-    <form id="login-form">
-      <label>Email<input id="email" type="email" required placeholder="you@example.com" autocomplete="email"></label>
-      <label id="password-label">Password<input id="password" type="password" required placeholder="Your password" autocomplete="current-password"></label>
-      <div id="otp-box" class="otp-box"><input id="otp" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" autocomplete="one-time-code"><button id="verify-code" class="btn dark" type="button">Verify code</button></div>
-      <p id="error" class="error"></p><p id="success" class="success"></p>
-      <button id="submit" class="btn dark" type="submit">Login</button>
-    </form>
-
-    <div style="margin-top:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <button id="forgot" class="danger-link" type="button">Forgot password?</button>
-      <button id="resend" class="danger-link" type="button" hidden>Resend code</button>
-    </div>
-    <p class="bottom">No account? <a href="register.html">Register</a></p>
-  </div>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
-<script src="packages.js"></script>
-<script src="pricing.js"></script>
+<style>.auth-mode{display:flex;gap:8px;margin:18px 0}.auth-mode button{flex:1}.otp-box{display:none;gap:10px;margin-top:12px}.otp-box input{letter-spacing:5px;text-align:center}.success{color:#15803d}.danger-link{background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;font:inherit}</style>
+</head><body><main class="auth"><div class="auth-box">
+<a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
+<p class="eyebrow">CUSTOMER LOGIN</p><h1>Welcome back.</h1><p class="muted">Use your password or receive a one-time code by email.</p>
+<div class="auth-mode"><button id="password-mode" class="btn dark" type="button">Password</button><button id="code-mode" class="btn" type="button">Email code</button></div>
+<form id="login-form"><label>Email<input id="email" type="email" required placeholder="you@example.com" autocomplete="email"></label><label id="password-label">Password<input id="password" type="password" required placeholder="Your password" autocomplete="current-password"></label><div id="otp-box" class="otp-box"><input id="otp" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="8-digit code" autocomplete="one-time-code"><button id="verify-code" class="btn dark" type="button">Verify code</button></div><p id="error" class="error"></p><p id="success" class="success"></p><button id="submit" class="btn dark" type="submit">Login</button></form>
+<div style="margin-top:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><button id="forgot" class="danger-link" type="button">Forgot password?</button><button id="resend" class="danger-link" type="button" hidden>Resend code</button></div><p class="bottom">No account? <a href="register.html">Register</a></p>
+</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="packages.js"></script><script src="pricing.js"></script>
 <script>
-const form=document.getElementById('login-form'),email=document.getElementById('email'),password=document.getElementById('password'),error=document.getElementById('error'),success=document.getElementById('success');
-const passMode=document.getElementById('password-mode'),codeMode=document.getElementById('code-mode'),passLabel=document.getElementById('password-label'),otpBox=document.getElementById('otp-box'),otp=document.getElementById('otp'),submit=document.getElementById('submit'),verify=document.getElementById('verify-code'),resend=document.getElementById('resend');
-let mode='password';
-function msg(e=' ',s=''){error.textContent=e;success.textContent=s;}
-function setMode(next){mode=next;msg();const code=next==='code';passLabel.style.display=code?'none':'';password.required=!code;otpBox.style.display=code?'flex':'none';submit.style.display=code?'none':'';resend.hidden=!code;passMode.className='btn '+(code?'':'dark');codeMode.className='btn '+(code?'dark':'');}
-passMode.onclick=()=>setMode('password'); codeMode.onclick=()=>setMode('code');
-async function logEvent(type,userId,userEmail){try{await window.supabaseClient.from('auth_email_events').insert({user_id:userId,email:userEmail,event_type:type});}catch(e){console.warn('auth event log',e);}}
-async function redirectUser(user){
-  const {data:profile}=await window.supabaseClient.from('profiles').select('role').eq('id',user.id).single();
-  if(profile?.role==='admin'){location.href='admin.html';return}
-  if(profile?.role==='worker'){location.href='worker.html';return}
-  const q=new URLSearchParams(location.search),product=q.get('product'),tier=q.get('package');
-  if(product&&tier){await window.MekyyPricing.load();const originalPrice=Number(q.get('originalPrice')||window.MEKYY_PACKAGES?.[product]?.[tier]?.price||q.get('price')||0);const price=window.MekyyPricing.discounted(originalPrice);let cart=[];try{cart=JSON.parse(localStorage.getItem('studio-cart')||'[]')}catch{}cart.push({product,package:tier,originalPrice,price,discount:window.MekyyPricing.getDiscount(),category:q.get('category')||'Design Service',addedAt:new Date().toISOString()});localStorage.setItem('studio-cart',JSON.stringify(cart));}
-  location.href='index.html';
-}
-form.addEventListener('submit',async e=>{e.preventDefault();if(mode==='code'){await sendCode();return}msg();const {data,error:err}=await window.supabaseClient.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(err){msg(err.message);return}if(!data.user){msg('Login failed.');return}await logEvent('password_login',data.user.id,data.user.email);await redirectUser(data.user);});
-async function sendCode(){msg();const address=email.value.trim();if(!address){msg('Enter your email first.');return}const {error:err}=await window.supabaseClient.auth.signInWithOtp({email:address,options:{shouldCreateUser:false}});if(err){msg(err.message);return}msg('',`A one-time code was sent to ${address}.`);otp.focus();}
-verify.onclick=async()=>{msg();const address=email.value.trim(),token=otp.value.trim();if(!address||!/^\d{6}$/.test(token)){msg('Enter the 6-digit code from your email.');return}const {data,error:err}=await window.supabaseClient.auth.verifyOtp({email:address,token,type:'email'});if(err){msg(err.message);return}await logEvent('email_otp_login',data.user?.id,address);await redirectUser(data.user);};
-resend.onclick=sendCode;
-document.getElementById('forgot').onclick=async()=>{msg();const address=email.value.trim();if(!address){msg('Enter your email first.');return}const {error:err}=await window.supabaseClient.auth.resetPasswordForEmail(address,{redirectTo:location.origin+'/reset.html'});if(err){msg(err.message);return}msg('',`Password reset email sent to ${address}.`);};
-</script>
-</body>
-</html>
+const form=document.getElementById('login-form'),email=document.getElementById('email'),password=document.getElementById('password'),error=document.getElementById('error'),success=document.getElementById('success');const passMode=document.getElementById('password-mode'),codeMode=document.getElementById('code-mode'),passLabel=document.getElementById('password-label'),otpBox=document.getElementById('otp-box'),otp=document.getElementById('otp'),submit=document.getElementById('submit'),verify=document.getElementById('verify-code'),resend=document.getElementById('resend');let mode='password';
+function msg(e='',s=''){error.textContent=e;success.textContent=s}function setMode(next){mode=next;msg();const code=next==='code';passLabel.style.display=code?'none':'';password.required=!code;otpBox.style.display=code?'flex':'none';submit.style.display=code?'none':'';resend.hidden=!code;passMode.className='btn '+(code?'':'dark');codeMode.className='btn '+(code?'dark':'')}passMode.onclick=()=>setMode('password');codeMode.onclick=()=>setMode('code');
+async function logEvent(type,userId,userEmail){try{await window.supabaseClient.from('auth_email_events').insert({user_id:userId,email:userEmail,event_type:type})}catch(e){console.warn('auth event log',e)}}
+async function redirectUser(user){const {data:profile}=await window.supabaseClient.from('profiles').select('role').eq('id',user.id).single();if(profile?.role==='admin'){location.href='admin.html';return}if(profile?.role==='worker'){location.href='worker.html';return}const q=new URLSearchParams(location.search),product=q.get('product'),tier=q.get('package');if(product&&tier){await window.MekyyPricing.load();const originalPrice=Number(q.get('originalPrice')||window.MEKYY_PACKAGES?.[product]?.[tier]?.price||q.get('price')||0);const price=window.MekyyPricing.discounted(originalPrice);let cart=[];try{cart=JSON.parse(localStorage.getItem('studio-cart')||'[]')}catch{}cart.push({product,package:tier,originalPrice,price,discount:window.MekyyPricing.getDiscount(),category:q.get('category')||'Design Service',addedAt:new Date().toISOString()});localStorage.setItem('studio-cart',JSON.stringify(cart))}location.href='index.html'}
+form.addEventListener('submit',async e=>{e.preventDefault();if(mode==='code'){await sendCode();return}msg();const {data,error:err}=await window.supabaseClient.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(err){msg(err.message);return}if(!data.user){msg('Login failed.');return}await logEvent('password_login',data.user.id,data.user.email);await redirectUser(data.user)});
+async function sendCode(){msg();const address=email.value.trim();if(!address){msg('Enter your email first.');return}const {error:err}=await window.supabaseClient.auth.signInWithOtp({email:address,options:{shouldCreateUser:false}});if(err){msg(err.message);return}msg('',`An 8-digit code was sent to ${address}.`);otp.focus()}
+verify.onclick=async()=>{msg();const address=email.value.trim(),token=otp.value.trim();if(!address||!/^[0-9]{8}$/.test(token)){msg('Enter the 8-digit code from your email.');return}const {data,error:err}=await window.supabaseClient.auth.verifyOtp({email:address,token,type:'email'});if(err){msg(err.message);return}await logEvent('email_otp_login',data.user?.id,address);await redirectUser(data.user)};resend.onclick=sendCode;
+document.getElementById('forgot').onclick=async()=>{msg();const address=email.value.trim();if(!address){msg('Enter your email first.');return}const {error:err}=await window.supabaseClient.auth.resetPasswordForEmail(address,{redirectTo:location.origin+'/reset.html'});if(err){msg(err.message);return}msg('',`Password reset email sent to ${address}.`)};
+</script></body></html>
