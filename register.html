@@ -1,79 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Register — MekyyStudio</title>
-<link rel="stylesheet" href="style.css">
-<script>(function(){try{var theme=localStorage.getItem("studio-theme");if(theme==="dark")document.documentElement.classList.add("dark-mode");}catch(e){}})();</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Register — MekyyStudio</title><link rel="stylesheet" href="style.css">
+<script>(function(){try{var theme=localStorage.getItem('studio-theme');if(theme==='dark')document.documentElement.classList.add('dark-mode');}catch(e){}})();</script>
+<style>.verify-box{display:none;gap:10px;margin-top:12px}.verify-box input{letter-spacing:5px;text-align:center}.success{color:#15803d}</style>
 </head>
 <body>
-
-<main class="auth">
-  <div class="auth-box">
-    <a class="brand" href="index.html">
-      <span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span>
-      <span class="brand-name">Mekyy<span>.</span>Studio</span>
-    </a>
-    <p class="eyebrow">NEW CUSTOMER</p>
-    <h1>Create account</h1>
-    <p class="muted">Create your account to keep orders, payments and live chat in one place.</p>
-    <form id="register-form">
-      <label>Name<input id="name" required placeholder="Your name"></label>
-      <label>Email<input id="email" type="email" required placeholder="you@example.com"></label>
-      <label>Password<input id="password" type="password" minlength="6" required placeholder="At least 6 characters"></label>
-      <div id="selected" class="selected"></div>
-      <p id="error" class="error"></p>
-      <button class="btn dark" type="submit">Create account</button>
-    </form>
-    <p class="bottom">Already have an account? <a href="login.html">Login</a></p>
-  </div>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
-<script src="packages.js"></script>
-<script src="pricing.js"></script>
+<main class="auth"><div class="auth-box">
+<a class="brand" href="index.html"><span class="brand-logo"><img src="assets/mekyy-studio-logo.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">M</span></span><span class="brand-name">Mekyy<span>.</span>Studio</span></a>
+<p class="eyebrow">NEW CUSTOMER</p><h1>Create account</h1><p class="muted">Create your account. We will send a one-time verification code to your email.</p>
+<form id="register-form">
+<label>Name<input id="name" required placeholder="Your name" autocomplete="name"></label>
+<label>Email<input id="email" type="email" required placeholder="you@example.com" autocomplete="email"></label>
+<label>Password<input id="password" type="password" minlength="6" required placeholder="At least 6 characters" autocomplete="new-password"></label>
+<div id="selected" class="selected"></div>
+<div id="verify-box" class="verify-box"><input id="otp" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" autocomplete="one-time-code"><button id="verify" class="btn dark" type="button">Verify email</button></div>
+<p id="error" class="error"></p><p id="success" class="success"></p>
+<button id="create" class="btn dark" type="submit">Create account</button>
+</form>
+<p class="bottom">Already have an account? <a href="login.html">Login</a></p>
+</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="packages.js"></script><script src="pricing.js"></script>
 <script>
-const params=new URLSearchParams(location.search);
-const product=params.get("product"),tier=params.get("package"),price=params.get("price");
-async function renderSelected(){
-  if(product){
-    if(tier && window.MekyyPricing){
-      await window.MekyyPricing.load();
-      const original=Number(window.MekyyPricing.originalForCart({product,package:tier,price}));
-      const final=window.MekyyPricing.discounted(original);
-      document.getElementById("selected").innerHTML=`Selected service: <b>${product}</b> · ${tier} · ${window.MekyyPricing.money(final)}${window.MekyyPricing.getDiscount()?` <small>(${window.MekyyPricing.getDiscount()}% off)</small>`:""}`;
-    }else{
-      document.getElementById("selected").innerHTML=`Selected service: <b>${product}</b>`;
-    }
-  }else{
-    document.getElementById("selected").style.display="none";
-  }
+const params=new URLSearchParams(location.search),product=params.get('product'),tier=params.get('package'),price=params.get('price');
+const form=document.getElementById('register-form'),err=document.getElementById('error'),ok=document.getElementById('success'),verifyBox=document.getElementById('verify-box'),otp=document.getElementById('otp'),create=document.getElementById('create');
+function msg(e='',s=''){err.textContent=e;ok.textContent=s;}
+async function renderSelected(){if(product){if(tier&&window.MekyyPricing){await window.MekyyPricing.load();const original=Number(window.MekyyPricing.originalForCart({product,package:tier,price})),final=window.MekyyPricing.discounted(original);document.getElementById('selected').innerHTML=`Selected service: <b>${product}</b> · ${tier} · ${window.MekyyPricing.money(final)}${window.MekyyPricing.getDiscount()?` <small>(${window.MekyyPricing.getDiscount()}% off)</small>`:''}`;}else document.getElementById('selected').innerHTML=`Selected service: <b>${product}</b>`;}else document.getElementById('selected').style.display='none';}
+async function logEvent(type,userId,email){try{await window.supabaseClient.from('auth_email_events').insert({user_id:userId,email,event_type:type});}catch(e){console.warn('auth event log',e);}}
+async function finish(user){
+  if(product&&tier){await window.MekyyPricing.load();const originalPrice=Number(window.MekyyPricing.originalForCart({product,package:tier,price})),finalPrice=window.MekyyPricing.discounted(originalPrice);const cart=JSON.parse(localStorage.getItem('studio-cart')||'[]');cart.push({product,package:tier,originalPrice,price:finalPrice,discount:window.MekyyPricing.getDiscount(),category:'Design Service',addedAt:new Date().toISOString()});localStorage.setItem('studio-cart',JSON.stringify(cart));}
+  location.href='index.html';
 }
-document.getElementById("register-form").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const error=document.getElementById("error");error.textContent="";
-  const {data,error:err}=await window.supabaseClient.auth.signUp({
-    email:document.getElementById("email").value.trim(),
-    password:document.getElementById("password").value,
-    options:{data:{name:document.getElementById("name").value.trim(),selected_product:product||""}}
-  });
-  if(err){error.textContent=err.message;return}
-  if(data.session){
-    if(product&&tier){
-      await window.MekyyPricing.load();
-      const originalPrice=Number(window.MekyyPricing.originalForCart({product,package:tier,price}));
-      const finalPrice=window.MekyyPricing.discounted(originalPrice);
-      const cart=JSON.parse(localStorage.getItem("studio-cart")||"[]");
-      cart.push({product,package:tier,originalPrice,price:finalPrice,discount:window.MekyyPricing.getDiscount(),category:"Design Service",addedAt:new Date().toISOString()});
-      localStorage.setItem("studio-cart",JSON.stringify(cart));
-    }
-    location.href="index.html";
-  }else{
-    location.href="login.html"+(product?("?"+params.toString()):"");
-  }
+form.addEventListener('submit',async e=>{e.preventDefault();msg();const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value,name=document.getElementById('name').value.trim();const {data,error}=await window.supabaseClient.auth.signUp({email,password,options:{data:{name,selected_product:product||''}}});if(error){msg(error.message);return}if(data.user&&data.session){await logEvent('register',data.user.id,email);await finish(data.user);return}
+  if(!data.user){msg('Registration failed.');return}
+  const otpSend=await window.supabaseClient.auth.signInWithOtp({email,options:{shouldCreateUser:false}});if(otpSend.error){msg('Account created, but we could not send the verification code: '+otpSend.error.message);return}
+  verifyBox.style.display='flex';create.style.display='none';otp.focus();msg('',`Verification code sent to ${email}.`);
 });
+document.getElementById('verify').onclick=async()=>{msg();const email=document.getElementById('email').value.trim(),token=otp.value.trim();if(!/^\d{6}$/.test(token)){msg('Enter the 6-digit code from your email.');return}const {data,error}=await window.supabaseClient.auth.verifyOtp({email,token,type:'email'});if(error){msg(error.message);return}await logEvent('email_otp_registration',data.user?.id,email);await finish(data.user);};
 renderSelected();
 </script>
-</body>
-</html>
+</body></html>
